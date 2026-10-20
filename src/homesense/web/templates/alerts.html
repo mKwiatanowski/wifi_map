@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Alerty – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Alerty</h1>
+  {% if unacked %}
+  <div class="actions">
+    <button type="button" class="btn" hx-post="/api/alerts/ack-all" hx-ext="hs-json" hx-swap="none" data-reload>Potwierdź wszystkie</button>
+    <p class="form-status" role="status"></p>
+  </div>
+  {% endif %}
+</div>
+
+<nav class="tabs" aria-label="Filtr alertów">
+  <a href="/alerts"{% if not unack_only %} class="active" aria-current="page"{% endif %}>Wszystkie</a>
+  <a href="/alerts?unack=1"{% if unack_only %} class="active" aria-current="page"{% endif %}>Niepotwierdzone</a>
+</nav>
+
+{% if alerts %}
+<ul class="alert-list">
+  {% for a in alerts %}
+  <li class="card alert-item sev-{{ a.severity }}{% if a.acknowledged %} is-acked{% endif %}">
+    <div class="alert-head">
+      <span class="tag tag-{{ a.severity }}">{{ severities.get(a.severity, a.severity) }}</span>
+      <strong>{{ a.title }}</strong>
+      <span class="muted small">{{ a.ts|when }}</span>
+    </div>
+    <p>{{ a.message }}</p>
+    <div class="actions">
+      {% if a.mac %}<a href="/devices/{{ a.mac }}" class="small">Urządzenie</a>{% endif %}
+      {% if a.person_id %}<a href="/persons/{{ a.person_id }}" class="small">Osoba</a>{% endif %}
+      {% if not a.acknowledged %}
+      <button type="button" class="btn btn-small" hx-post="/api/alerts/{{ a.id }}/ack" hx-ext="hs-json" hx-swap="none" data-reload>Potwierdź</button>
+      {% else %}<span class="muted small">potwierdzony</span>{% endif %}
+      <p class="form-status" role="status"></p>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">Brak alertów{% if unack_only %} do potwierdzenia{% endif %}. Wszystko w porządku.</p>
+{% endif %}
+{% endblock %}

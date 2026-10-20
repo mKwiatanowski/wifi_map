@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  {# htmx: no inline indicator <style> (CSP style-src 'self'), no eval / hx-on, no scripts from swapped HTML. #}
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "allowScriptTags": false}'>
+  <title>{% block title %}HomeSense{% endblock %}</title>
+  <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  {% if user %}<script src="/static/vendor/chart.umd.min.js" defer></script>{% endif %}
+  <script src="/static/js/app.js" defer></script>
+  {% if user %}<script src="/static/vendor/alpine.min.js" defer></script>{% endif %}
+  {% block scripts %}{% endblock %}
+</head>
+<body{% if user %} data-live="1" hx-headers='{"X-CSRF-Token": {{ csrf_token|tojson }}}'{% else %} class="bare"{% endif %}>
+  {% if user %}
+  <header class="topbar">
+    <a class="brand" href="/"><img src="/static/icons/favicon.svg" alt="" width="28" height="28"><span>HomeSense</span></a>
+    <nav class="nav" aria-label="Główna nawigacja">
+      {% for key, href, label in nav %}
+      <a href="{{ href }}"{% if page == key %} class="active" aria-current="page"{% endif %}>{{ label }}{% if key == 'alerts' %}<span class="badge" id="alert-badge"{% if not unacked %} hidden{% endif %}>{{ unacked }}</span>{% endif %}</a>
+      {% endfor %}
+    </nav>
+    <form method="post" action="/logout" class="logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-ghost" title="Zalogowano jako {{ user }}">Wyloguj</button>
+    </form>
+  </header>
+  {% endif %}
+  <main class="{% block main_class %}container{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

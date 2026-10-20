@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Ustawienia – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Ustawienia</h1><span class="muted small">Zalogowano jako {{ username }}</span></div>
+
+<section class="card" x-data="alertRules">
+  <h2>Powiadomienia</h2>
+  <form class="stack" x-on:submit.prevent="save()">
+    <div class="form-row">
+      <label>Minimalna ważność
+        <select x-model="cfg.min_severity">
+          {% for key, label in severities.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Cisza nocna od (godz.)
+        <input type="number" min="0" max="23" required x-model.number="cfg.quiet_hours.start">
+      </label>
+      <label>do (godz.)
+        <input type="number" min="0" max="23" required x-model.number="cfg.quiet_hours.end">
+      </label>
+      <label class="check"><input type="checkbox" x-bind:checked="allows('critical')" x-on:change="toggleAllow('critical')"> Krytyczne także w nocy</label>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Zdarzenie</th>{% for key, label in channels.items() %}<th class="num">{{ label }}{% if key not in notifiers %}<span class="muted small" title="kanał nieskonfigurowany"> *</span>{% endif %}</th>{% endfor %}</tr></thead>
+        <tbody>
+          <template x-for="kind in kinds()" x-bind:key="kind">
+            <tr>
+              <td x-text="kindLabel(kind)"></td>
+              {% for key, label in channels.items() %}
+              <td class="num"><input type="checkbox" x-bind:aria-label="kindLabel(kind) + ': {{ label }}'" x-bind:checked="has(kind, '{{ key }}')" x-on:change="toggle(kind, '{{ key }}')"></td>
+              {% endfor %}
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted small">* kanał nie jest skonfigurowany w pliku <code>.env</code> — powiadomienia nie zostaną wysłane.</p>
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Zapisz</button>
+      <p class="form-status" role="status" x-text="status"></p>
+    </div>
+  </form>
+  <script type="application/json" id="alert-rules-data">{{ rules|tojson }}</script>
+  <script type="application/json" id="alert-kind-labels">{{ rule_kinds|tojson }}</script>
+</section>
+
+<section class="card">
+  <h2>Test powiadomień</h2>
+  {% if notifiers %}
+  <form class="form-row" hx-post="/api/settings/test-notification" hx-ext="hs-json" hx-swap="none" data-success="Wysłano powiadomienie testowe.">
+    <label>Kanał
+      <select name="channel">{% for name in notifiers %}<option value="{{ name }}">{{ channels.get(name, name) }}</option>{% endfor %}</select>
+    </label>
+    <button type="submit" class="btn">Wyślij test</button>
+    <p class="form-status" role="status"></p>
+  </form>
+  {% else %}
+  <p class="empty">Brak skonfigurowanych kanałów powiadomień.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Kolektory</h2>
+  <p class="muted small">Tryb pracy: {{ 'symulacja' if settings.mode == 'simulated' else 'na żywo' }}.</p>
+  {% if collectors %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Kolektor</th><th>Stan</th><th>Ostatnio OK</th><th class="hide-sm">Ostatni błąd</th></tr></thead>
+    <tbody>
+    {% for c in collectors %}
+      {% set st = c.status %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>
+          {% if c.paused_until %}<span class="tag">wstrzymany do {{ c.paused_until|when }}</span>
+          {% elif st is none %}<span class="muted">brak danych</span>
+          {% elif st.consecutive_failures %}<span class="dot dot-err"></span>błędy: {{ st.consecutive_failures }}
+          {% else %}<span class="dot dot-on"></span>działa{% endif %}
+        </td>
+        <td>{{ st.last_ok_ts|when if st else '—' }}</td>
+        <td class="hide-sm">{% if st and st.last_error_ts %}{{ st.last_error_ts|when }} <span class="muted small break">{{ (st.last_error or '')[:200] }}</span>{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">Brak aktywnych kolektorów (brak danych).</p>
+  {% endif %}
+  {% if has_router %}
+  <div class="actions">
+    <button type="button" class="btn" hx-post="/api/router/pause" hx-ext="hs-json" hx-swap="none" hx-vals='{"minutes": "15"}' data-reload>Wstrzymaj router na 15 min</button>
+    <p class="form-status" role="status"></p>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>System</h2>
+  <dl class="details">
+    <dt>Strefa czasowa</dt><dd>{{ settings.timezone }}</dd>
+    <dt>Retencja danych</dt><dd>{{ settings.retention_days }} dni</dd>
+    <dt>Opóźnienie „wyszedł”</dt><dd>{{ settings.departure_timeout_min }} min</dd>
+  </dl>
+  <p class="muted small">Te wartości zmienisz w pliku <code>.env</code> (wymaga restartu usługi).</p>
+</section>
+{% endblock %}

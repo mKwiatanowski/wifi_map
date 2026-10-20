@@ -1,0 +1,139 @@
+{
+  "id": null,
+  "uid": "homesense-traffic",
+  "title": "HomeSense – Ruch",
+  "tags": [
+    "homesense",
+    "ruch"
+  ],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Pobieranie wg urządzenia",
+      "description": "Średnia prędkość pobierania (kb/s) w przedziałach 5-minutowych, wg danych routera.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "time series",
+          "queryText": "SELECT (CAST(strftime('%s', o.ts) AS INTEGER) / 300) * 300 AS time,\n  COALESCE(d.label, d.hostname, o.mac) AS device,\n  ROUND(AVG(o.down_kbps), 1) AS kbps\nFROM device_observations o\nLEFT JOIN devices d ON d.mac = o.mac\nWHERE o.down_kbps IS NOT NULL AND o.ts >= datetime($__from / 1000, 'unixepoch') AND o.ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY 1, 2\nORDER BY 1, 2",
+          "rawQueryText": "SELECT (CAST(strftime('%s', o.ts) AS INTEGER) / 300) * 300 AS time,\n  COALESCE(d.label, d.hostname, o.mac) AS device,\n  ROUND(AVG(o.down_kbps), 1) AS kbps\nFROM device_observations o\nLEFT JOIN devices d ON d.mac = o.mac\nWHERE o.down_kbps IS NOT NULL AND o.ts >= datetime($__from / 1000, 'unixepoch') AND o.ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY 1, 2\nORDER BY 1, 2",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.device}",
+          "unit": "Kbits",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Wysyłanie wg urządzenia",
+      "description": "Średnia prędkość wysyłania (kb/s) w przedziałach 5-minutowych, wg danych routera.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "time series",
+          "queryText": "SELECT (CAST(strftime('%s', o.ts) AS INTEGER) / 300) * 300 AS time,\n  COALESCE(d.label, d.hostname, o.mac) AS device,\n  ROUND(AVG(o.up_kbps), 1) AS kbps\nFROM device_observations o\nLEFT JOIN devices d ON d.mac = o.mac\nWHERE o.up_kbps IS NOT NULL AND o.ts >= datetime($__from / 1000, 'unixepoch') AND o.ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY 1, 2\nORDER BY 1, 2",
+          "rawQueryText": "SELECT (CAST(strftime('%s', o.ts) AS INTEGER) / 300) * 300 AS time,\n  COALESCE(d.label, d.hostname, o.mac) AS device,\n  ROUND(AVG(o.up_kbps), 1) AS kbps\nFROM device_observations o\nLEFT JOIN devices d ON d.mac = o.mac\nWHERE o.up_kbps IS NOT NULL AND o.ts >= datetime($__from / 1000, 'unixepoch') AND o.ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY 1, 2\nORDER BY 1, 2",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.device}",
+          "unit": "Kbits",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}

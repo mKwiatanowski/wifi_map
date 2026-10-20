@@ -1,0 +1,247 @@
+{
+  "id": null,
+  "uid": "homesense-presence",
+  "title": "HomeSense – Obecność",
+  "tags": [
+    "homesense",
+    "obecność"
+  ],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "state-timeline",
+      "title": "Obecność domowników",
+      "description": "Kto był w domu (z przedziałów obecności).",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "time series",
+          "queryText": "SELECT time, person, home FROM (\n  SELECT MAX(CAST(strftime('%s', i.start_ts) AS INTEGER), $__from / 1000) AS time, p.name AS person, 1 AS home\n  FROM presence_intervals i JOIN persons p ON p.id = i.person_id\n  WHERE i.start_ts <= datetime($__to / 1000, 'unixepoch') AND (i.end_ts IS NULL OR i.end_ts >= datetime($__from / 1000, 'unixepoch'))\n  UNION ALL\n  SELECT CAST(strftime('%s', i.end_ts) AS INTEGER) AS time, p.name AS person, 0 AS home\n  FROM presence_intervals i JOIN persons p ON p.id = i.person_id\n  WHERE i.end_ts IS NOT NULL AND i.end_ts >= datetime($__from / 1000, 'unixepoch') AND i.end_ts <= datetime($__to / 1000, 'unixepoch')\n  UNION ALL\n  SELECT $__to / 1000 AS time, p.name AS person, 1 AS home\n  FROM presence_intervals i JOIN persons p ON p.id = i.person_id\n  WHERE i.end_ts IS NULL AND i.start_ts <= datetime($__to / 1000, 'unixepoch')\n)\nORDER BY time, person, home",
+          "rawQueryText": "SELECT time, person, home FROM (\n  SELECT MAX(CAST(strftime('%s', i.start_ts) AS INTEGER), $__from / 1000) AS time, p.name AS person, 1 AS home\n  FROM presence_intervals i JOIN persons p ON p.id = i.person_id\n  WHERE i.start_ts <= datetime($__to / 1000, 'unixepoch') AND (i.end_ts IS NULL OR i.end_ts >= datetime($__from / 1000, 'unixepoch'))\n  UNION ALL\n  SELECT CAST(strftime('%s', i.end_ts) AS INTEGER) AS time, p.name AS person, 0 AS home\n  FROM presence_intervals i JOIN persons p ON p.id = i.person_id\n  WHERE i.end_ts IS NOT NULL AND i.end_ts >= datetime($__from / 1000, 'unixepoch') AND i.end_ts <= datetime($__to / 1000, 'unixepoch')\n  UNION ALL\n  SELECT $__to / 1000 AS time, p.name AS person, 1 AS home\n  FROM presence_intervals i JOIN persons p ON p.id = i.person_id\n  WHERE i.end_ts IS NULL AND i.start_ts <= datetime($__to / 1000, 'unixepoch')\n)\nORDER BY time, person, home",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.person}",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5a6270",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Poza domem",
+                  "color": "#5a6270",
+                  "index": 0
+                },
+                "1": {
+                  "text": "W domu",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Przyjścia i wyjścia",
+      "description": "Ostatnie zdarzenia obecności (najnowsze na górze).",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 10,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "queryText": "SELECT CAST(strftime('%s', e.ts) AS INTEGER) AS time,\n  p.name AS \"Osoba\",\n  CASE e.kind WHEN 'arrive' THEN 'Przyjście' ELSE 'Wyjście' END AS \"Zdarzenie\",\n  COALESCE(d.label, d.hostname, e.mac) AS \"Urządzenie\"\nFROM presence_events e\nJOIN persons p ON p.id = e.person_id\nLEFT JOIN devices d ON d.mac = e.mac\nWHERE e.ts >= datetime($__from / 1000, 'unixepoch') AND e.ts <= datetime($__to / 1000, 'unixepoch')\nORDER BY e.ts DESC\nLIMIT 500",
+          "rawQueryText": "SELECT CAST(strftime('%s', e.ts) AS INTEGER) AS time,\n  p.name AS \"Osoba\",\n  CASE e.kind WHEN 'arrive' THEN 'Przyjście' ELSE 'Wyjście' END AS \"Zdarzenie\",\n  COALESCE(d.label, d.hostname, e.mac) AS \"Urządzenie\"\nFROM presence_events e\nJOIN persons p ON p.id = e.person_id\nLEFT JOIN devices d ON d.mac = e.mac\nWHERE e.ts >= datetime($__from / 1000, 'unixepoch') AND e.ts <= datetime($__to / 1000, 'unixepoch')\nORDER BY e.ts DESC\nLIMIT 500",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Czas"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Typowa obecność w tygodniu (%)",
+      "description": "Mapa cieplna profilu: średni odsetek godziny spędzonej w domu, wg dnia tygodnia i godziny czasu lokalnego (Europe/Warsaw).",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 9,
+        "w": 14,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "queryText": "SELECT p.name AS \"Osoba\",\n  CASE pr.weekday WHEN 0 THEN 'Pn' WHEN 1 THEN 'Wt' WHEN 2 THEN 'Śr' WHEN 3 THEN 'Cz'\n    WHEN 4 THEN 'Pt' WHEN 5 THEN 'So' ELSE 'Nd' END AS \"Dzień\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 0 THEN pr.value END)) AS \"00\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 1 THEN pr.value END)) AS \"01\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 2 THEN pr.value END)) AS \"02\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 3 THEN pr.value END)) AS \"03\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 4 THEN pr.value END)) AS \"04\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 5 THEN pr.value END)) AS \"05\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 6 THEN pr.value END)) AS \"06\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 7 THEN pr.value END)) AS \"07\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 8 THEN pr.value END)) AS \"08\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 9 THEN pr.value END)) AS \"09\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 10 THEN pr.value END)) AS \"10\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 11 THEN pr.value END)) AS \"11\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 12 THEN pr.value END)) AS \"12\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 13 THEN pr.value END)) AS \"13\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 14 THEN pr.value END)) AS \"14\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 15 THEN pr.value END)) AS \"15\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 16 THEN pr.value END)) AS \"16\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 17 THEN pr.value END)) AS \"17\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 18 THEN pr.value END)) AS \"18\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 19 THEN pr.value END)) AS \"19\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 20 THEN pr.value END)) AS \"20\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 21 THEN pr.value END)) AS \"21\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 22 THEN pr.value END)) AS \"22\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 23 THEN pr.value END)) AS \"23\"\nFROM profiles pr\nJOIN persons p ON CAST(pr.subject_id AS INTEGER) = p.id\nWHERE pr.subject_type = 'person_home'\nGROUP BY p.name, pr.weekday\nORDER BY p.name, pr.weekday",
+          "rawQueryText": "SELECT p.name AS \"Osoba\",\n  CASE pr.weekday WHEN 0 THEN 'Pn' WHEN 1 THEN 'Wt' WHEN 2 THEN 'Śr' WHEN 3 THEN 'Cz'\n    WHEN 4 THEN 'Pt' WHEN 5 THEN 'So' ELSE 'Nd' END AS \"Dzień\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 0 THEN pr.value END)) AS \"00\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 1 THEN pr.value END)) AS \"01\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 2 THEN pr.value END)) AS \"02\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 3 THEN pr.value END)) AS \"03\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 4 THEN pr.value END)) AS \"04\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 5 THEN pr.value END)) AS \"05\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 6 THEN pr.value END)) AS \"06\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 7 THEN pr.value END)) AS \"07\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 8 THEN pr.value END)) AS \"08\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 9 THEN pr.value END)) AS \"09\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 10 THEN pr.value END)) AS \"10\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 11 THEN pr.value END)) AS \"11\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 12 THEN pr.value END)) AS \"12\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 13 THEN pr.value END)) AS \"13\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 14 THEN pr.value END)) AS \"14\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 15 THEN pr.value END)) AS \"15\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 16 THEN pr.value END)) AS \"16\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 17 THEN pr.value END)) AS \"17\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 18 THEN pr.value END)) AS \"18\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 19 THEN pr.value END)) AS \"19\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 20 THEN pr.value END)) AS \"20\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 21 THEN pr.value END)) AS \"21\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 22 THEN pr.value END)) AS \"22\",\n  ROUND(100.0 * MAX(CASE WHEN pr.hour = 23 THEN pr.value END)) AS \"23\"\nFROM profiles pr\nJOIN persons p ON CAST(pr.subject_id AS INTEGER) = p.id\nWHERE pr.subject_type = 'person_home'\nGROUP BY p.name, pr.weekday\nORDER BY p.name, pr.weekday"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "width": 34
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "string"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

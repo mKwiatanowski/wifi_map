@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Urządzenia – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Urządzenia</h1></div>
+
+<nav class="tabs" aria-label="Filtr urządzeń">
+  {% for key, label in filters.items() %}
+  <a href="/devices{% if key != 'all' %}?filter={{ key }}{% endif %}"{% if filter == key %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+
+{% if devices %}
+<section class="card table-wrap">
+  <table class="table">
+    <thead>
+      <tr><th>Urządzenie</th><th>Osoba</th><th class="hide-sm">Typ</th><th class="hide-sm">IP</th><th>Ostatnio</th></tr>
+    </thead>
+    <tbody>
+    {% for row in devices %}
+      <tr>
+        <td>
+          <span class="dot {{ 'dot-on' if row.online else 'dot-off' }}" title="{{ 'online' if row.online else 'offline' }}"></span>
+          <a href="/devices/{{ row.d.mac }}">{{ row.d.display_name }}</a>
+          <div class="muted small">{{ row.d.mac }}{% if row.d.vendor %} · {{ row.d.vendor }}{% endif %}{% if row.d.is_random %} · losowy MAC{% endif %}{% if not row.d.trusted and row.d.person_id is none %} · <span class="tag tag-warn">nieznane</span>{% endif %}</div>
+        </td>
+        <td>{{ row.owner or '—' }}</td>
+        <td class="hide-sm">{{ kinds.get(row.d.kind, '—') if row.d.kind else '—' }}</td>
+        <td class="hide-sm">{{ row.d.ip or '—' }}</td>
+        <td>{{ row.d.last_seen|when }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<p class="empty">Brak urządzeń{% if filter != 'all' %} w tym widoku{% endif %}. Urządzenia pojawią się, gdy kolektory zobaczą je w sieci.</p>
+{% endif %}
+{% endblock %}

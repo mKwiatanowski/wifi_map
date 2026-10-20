@@ -1,0 +1,1 @@
+{"data":[{"time":"2026-10-19T08:00:05.123+02:00","client":"192.168.0.23","question":{"name":"api.spotify.com","type":"A"},"reason":"NotFilteredNotFound"},{"time":"2026-10-19T08:00:03+02:00","client":"192.168.0.40","question":{"name":"ads.example.","type":"A"},"reason":"FilteredBlackList"}],"oldest":"2026-10-19T08:00:03+02:00"}

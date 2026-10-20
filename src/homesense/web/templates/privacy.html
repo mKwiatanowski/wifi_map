@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Co zbiera system – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Co zbiera system</h1></div>
+
+<div class="grid two">
+  <section class="card">
+    <h2>Zbierane dane (tylko metadane)</h2>
+    <ul class="plain checklist">
+      <li>Urządzenia w sieci domowej: adres MAC, IP, nazwa hosta, producent, kiedy były widoczne.</li>
+      <li>Obecność domowników wyliczana z obecności ich telefonów w WiFi (przyjścia, wyjścia, przedziały czasu).</li>
+      <li>Statystyki DNS z AdGuard Home: liczba zapytań i blokad na godzinę oraz nazwy odwiedzanych domen (bez adresów stron).</li>
+      <li>Wolumen ruchu urządzeń (kb/s) raportowany przez router.</li>
+      <li>Alerty i ich potwierdzenia.</li>
+    </ul>
+  </section>
+  <section class="card">
+    <h2>Czego system nie zbiera</h2>
+    <ul class="plain crosslist">
+      <li>Treści komunikacji, wiadomości, haseł ani zawartości stron.</li>
+      <li>Pełnych adresów URL — tylko nazwy domen.</li>
+      <li>Niczego spoza Twojej sieci domowej: brak przechwytywania ruchu (MITM) i łamania zabezpieczeń.</li>
+      <li>Danych wysyłanych na zewnątrz — wszystko zostaje na tym komputerze (poza powiadomieniami, które sam włączysz).</li>
+    </ul>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Przechowywanie</h2>
+  <p>Dane są przechowywane lokalnie w bazie SQLite i automatycznie usuwane po <strong>{{ settings.retention_days }} dniach</strong>.</p>
+</section>
+
+<section class="card">
+  <h2>Tryb prywatności domowników</h2>
+  <p class="muted small">„Tylko statystyki” — dla urządzeń tej osoby nie są zapisywane nazwy domen, jedynie liczby zapytań.</p>
+  {% if persons %}
+  <ul class="plain">
+    {% for p in persons %}
+    <li>
+      <form class="form-row" hx-patch="/api/persons/{{ p.id }}" hx-ext="hs-json" hx-swap="none" data-success="Zapisano.">
+        <strong class="grow">{{ p.name }}</strong>
+        <select name="privacy_mode" aria-label="Tryb prywatności: {{ p.name }}">
+          <option value="full"{% if p.privacy_mode == 'full' %} selected{% endif %}>Pełne dane</option>
+          <option value="stats_only"{% if p.privacy_mode == 'stats_only' %} selected{% endif %}>Tylko statystyki</option>
+        </select>
+        <button type="submit" class="btn btn-small">Zapisz</button>
+        <p class="form-status" role="status"></p>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">Brak osób — dodaj domowników na stronie <a href="/persons">Osoby</a>.</p>
+  {% endif %}
+</section>
+{% endblock %}

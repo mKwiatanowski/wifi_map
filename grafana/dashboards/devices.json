@@ -1,0 +1,139 @@
+{
+  "id": null,
+  "uid": "homesense-devices",
+  "title": "HomeSense – Urządzenia",
+  "tags": [
+    "homesense",
+    "urządzenia"
+  ],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Urządzenia online",
+      "description": "Liczba różnych urządzeń widocznych w sieci w przedziałach 5-minutowych.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "time series",
+          "queryText": "SELECT (CAST(strftime('%s', ts) AS INTEGER) / 300) * 300 AS time,\n  COUNT(DISTINCT mac) AS \"Urządzenia online\"\nFROM device_observations\nWHERE online = 1 AND ts >= datetime($__from / 1000, 'unixepoch') AND ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY 1\nORDER BY 1",
+          "rawQueryText": "SELECT (CAST(strftime('%s', ts) AS INTEGER) / 300) * 300 AS time,\n  COUNT(DISTINCT mac) AS \"Urządzenia online\"\nFROM device_observations\nWHERE online = 1 AND ts >= datetime($__from / 1000, 'unixepoch') AND ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY 1\nORDER BY 1",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "fillOpacity": 15
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Urządzenia – ostatnio widziane",
+      "description": "Wszystkie znane urządzenia, ostatnio widziane na górze.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "queryText": "SELECT COALESCE(d.label, d.hostname, d.mac) AS \"Urządzenie\",\n  d.mac AS \"MAC\",\n  d.ip AS \"IP\",\n  d.vendor AS \"Producent\",\n  p.name AS \"Właściciel\",\n  CASE WHEN d.last_seen >= datetime('now', '-5 minutes') THEN 'W sieci' ELSE 'Poza siecią' END AS \"Stan\",\n  CAST(strftime('%s', d.last_seen) AS INTEGER) AS time\nFROM devices d\nLEFT JOIN persons p ON p.id = d.person_id\nORDER BY d.last_seen DESC",
+          "rawQueryText": "SELECT COALESCE(d.label, d.hostname, d.mac) AS \"Urządzenie\",\n  d.mac AS \"MAC\",\n  d.ip AS \"IP\",\n  d.vendor AS \"Producent\",\n  p.name AS \"Właściciel\",\n  CASE WHEN d.last_seen >= datetime('now', '-5 minutes') THEN 'W sieci' ELSE 'Poza siecią' END AS \"Stan\",\n  CAST(strftime('%s', d.last_seen) AS INTEGER) AS time\nFROM devices d\nLEFT JOIN persons p ON p.id = d.person_id\nORDER BY d.last_seen DESC",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Ostatnio widziane"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,256 @@
+{
+  "id": null,
+  "uid": "homesense-dns",
+  "title": "HomeSense – DNS",
+  "tags": [
+    "homesense",
+    "dns"
+  ],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Zapytania DNS na godzinę wg urządzenia",
+      "description": "Liczba zapytań DNS w każdej godzinie, skumulowana po urządzeniach.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 18,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "time series",
+          "queryText": "SELECT CAST(strftime('%s', s.hour_ts) AS INTEGER) AS time,\n  CASE WHEN s.mac = 'unknown' THEN 'Nieznane urządzenie' ELSE COALESCE(d.label, d.hostname, s.mac) END AS device,\n  s.queries AS \"Zapytania\"\nFROM dns_hourly_stats s\nLEFT JOIN devices d ON d.mac = s.mac\nWHERE s.hour_ts >= datetime($__from / 1000, 'unixepoch') AND s.hour_ts <= datetime($__to / 1000, 'unixepoch')\nORDER BY time, device",
+          "rawQueryText": "SELECT CAST(strftime('%s', s.hour_ts) AS INTEGER) AS time,\n  CASE WHEN s.mac = 'unknown' THEN 'Nieznane urządzenie' ELSE COALESCE(d.label, d.hostname, s.mac) END AS device,\n  s.queries AS \"Zapytania\"\nFROM dns_hourly_stats s\nLEFT JOIN devices d ON d.mac = s.mac\nWHERE s.hour_ts >= datetime($__from / 1000, 'unixepoch') AND s.hour_ts <= datetime($__to / 1000, 'unixepoch')\nORDER BY time, device",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.device}",
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Odsetek zablokowanych zapytań",
+      "description": "Zapytania zablokowane przez AdGuard Home w wybranym okresie.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "queryText": "SELECT 100.0 * SUM(blocked) / NULLIF(SUM(queries), 0) AS \"Zablokowane\"\nFROM dns_hourly_stats\nWHERE hour_ts >= datetime($__from / 1000, 'unixepoch') AND hour_ts <= datetime($__to / 1000, 'unixepoch')",
+          "rawQueryText": "SELECT 100.0 * SUM(blocked) / NULLIF(SUM(queries), 0) AS \"Zablokowane\"\nFROM dns_hourly_stats\nWHERE hour_ts >= datetime($__from / 1000, 'unixepoch') AND hour_ts <= datetime($__to / 1000, 'unixepoch')"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "brak danych",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Najczęściej odpytywane domeny",
+      "description": "Bez urządzeń osób w trybie „tylko statystyki”.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "queryText": "SELECT h.domain AS \"Domena\", SUM(h.queries) AS \"Zapytania\"\nFROM dns_hourly h\nLEFT JOIN devices d ON d.mac = h.mac\nLEFT JOIN persons p ON p.id = d.person_id\nWHERE COALESCE(p.privacy_mode, 'full') = 'full' AND h.hour_ts >= datetime($__from / 1000, 'unixepoch') AND h.hour_ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY h.domain\nORDER BY 2 DESC\nLIMIT 15",
+          "rawQueryText": "SELECT h.domain AS \"Domena\", SUM(h.queries) AS \"Zapytania\"\nFROM dns_hourly h\nLEFT JOIN devices d ON d.mac = h.mac\nLEFT JOIN persons p ON p.id = d.person_id\nWHERE COALESCE(p.privacy_mode, 'full') = 'full' AND h.hour_ts >= datetime($__from / 1000, 'unixepoch') AND h.hour_ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY h.domain\nORDER BY 2 DESC\nLIMIT 15"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "Domena",
+        "showValue": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Nowe domeny",
+      "description": "Domeny odpytane po raz pierwszy przez dane urządzenie. Bez urządzeń osób w trybie „tylko statystyki”.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "queryText": "SELECT CAST(strftime('%s', f.first_seen) AS INTEGER) AS time,\n  CASE WHEN f.mac = 'unknown' THEN 'Nieznane urządzenie' ELSE COALESCE(d.label, d.hostname, f.mac) END AS \"Urządzenie\",\n  f.domain AS \"Domena\"\nFROM domain_first_seen f\nLEFT JOIN devices d ON d.mac = f.mac\nLEFT JOIN persons p ON p.id = d.person_id\nWHERE COALESCE(p.privacy_mode, 'full') = 'full' AND f.first_seen >= datetime($__from / 1000, 'unixepoch') AND f.first_seen <= datetime($__to / 1000, 'unixepoch')\nORDER BY f.first_seen DESC\nLIMIT 200",
+          "rawQueryText": "SELECT CAST(strftime('%s', f.first_seen) AS INTEGER) AS time,\n  CASE WHEN f.mac = 'unknown' THEN 'Nieznane urządzenie' ELSE COALESCE(d.label, d.hostname, f.mac) END AS \"Urządzenie\",\n  f.domain AS \"Domena\"\nFROM domain_first_seen f\nLEFT JOIN devices d ON d.mac = f.mac\nLEFT JOIN persons p ON p.id = d.person_id\nWHERE COALESCE(p.privacy_mode, 'full') = 'full' AND f.first_seen >= datetime($__from / 1000, 'unixepoch') AND f.first_seen <= datetime($__to / 1000, 'unixepoch')\nORDER BY f.first_seen DESC\nLIMIT 200",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pierwsze zapytanie"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

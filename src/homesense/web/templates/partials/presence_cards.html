@@ -1,0 +1,21 @@
+{% if cards %}
+<div class="grid cards">
+  {% for c in cards %}
+  <a class="card person-card{% if c.home %} is-home{% endif %}" href="/persons/{{ c.person.id }}"{% if c.person.color %} data-color="{{ c.person.color }}"{% endif %}>
+    <div class="person-head">
+      <span class="avatar">{{ c.person.name[:1] }}</span>
+      <div>
+        <div class="person-name">{{ c.person.name }}</div>
+        <div class="status"><span class="dot {{ 'dot-on' if c.home else 'dot-off' }}"></span>{{ 'W domu' if c.home else 'Poza domem' }}</div>
+      </div>
+    </div>
+    <div class="muted small">
+      {% if c.since %}od {{ c.since|when }} ({{ c.since|ago }}){% else %}Brak danych o obecności{% endif %}
+      {% if c.home and c.via %}<br>przez {{ c.via }}{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty">Brak osób. Dodaj domowników na stronie <a href="/persons">Osoby</a> i przypisz im urządzenia.</p>
+{% endif %}

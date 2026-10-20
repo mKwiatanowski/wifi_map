@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{{ person.name }} – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head"{% if person.color %} data-color="{{ person.color }}"{% endif %}>
+  <h1>{{ person.name }}</h1>
+  <span class="status"><span class="dot {{ 'dot-on' if card.home else 'dot-off' }}"></span>{{ 'W domu' if card.home else 'Poza domem' }}{% if card.since %} od {{ card.since|when }} ({{ card.since|ago }}){% endif %}</span>
+</div>
+
+<section class="card">
+  <h2>Typowa obecność w domu</h2>
+  <p class="muted small">Prawdopodobieństwo bycia w domu w danej godzinie tygodnia (ostatnie {{ window_days }} dni, czas lokalny).</p>
+  {% if heatmap %}
+  <div class="heatmap" role="table" aria-label="Mapa obecności: dni tygodnia i godziny">
+    <div class="hm-row hm-hours" role="row">
+      <span class="hm-label"></span>
+      {% for h in hours %}<span class="hm-hour" role="columnheader">{{ h if h % 3 == 0 else '' }}</span>{% endfor %}
+    </div>
+    {% for row in heatmap %}
+    <div class="hm-row" role="row">
+      <span class="hm-label" role="rowheader">{{ row.label }}</span>
+      {% for c in row.cells %}<span class="hm-cell {{ 'lvl-none' if c.level is none else 'lvl-' ~ c.level }}" role="cell" title="{{ row.label }} {{ '%02d'|format(c.hour) }}:00 — {% if c.level is none %}brak danych{% else %}{{ c.percent }}% ({{ c.samples }} próbek){% endif %}"></span>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="legend small muted"><span>0%</span><span class="legend-cell hm-cell lvl-0"></span><span class="legend-cell hm-cell lvl-3"></span><span class="legend-cell hm-cell lvl-5"></span><span class="legend-cell hm-cell lvl-8"></span><span class="legend-cell hm-cell lvl-10"></span><span>100%</span></div>
+  {% else %}
+  <p class="empty">Brak danych — profil obecności powstaje po kilku dniach obserwacji.</p>
+  {% endif %}
+</section>
+
+<div class="grid two">
+  <section class="card">
+    <h2>Typowe godziny</h2>
+    {% if has_typical %}
+    <table class="table">
+      <thead><tr><th>Dzień</th><th>Przyjście</th><th>Wyjście</th></tr></thead>
+      <tbody>
+      {% for r in typical %}
+        <tr>
+          <td>{{ r.label }}</td>
+          <td>{% if r.arrive %}{{ r.arrive[0] }} <span class="muted small">± {{ r.arrive[1] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if r.leave %}{{ r.leave[0] }} <span class="muted small">± {{ r.leave[1] }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted small">Mediana i rozrzut (IQR) z ostatnich tygodni.</p>
+    {% else %}
+    <p class="empty">Brak danych o typowych godzinach przyjść i wyjść.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Dzisiaj w domu</h2>
+    {% if timeline.intervals %}
+    <ul class="plain">
+      {% for iv in timeline.intervals %}
+      <li>{{ iv.start|when }} – {% if iv.open %}teraz{% else %}{{ iv.end|when }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Brak danych o obecności dzisiaj.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <h2>Urządzenia</h2>
+  {% if devices %}
+  <ul class="plain">
+    {% for d in devices %}
+    <li><a href="/devices/{{ d.mac }}">{{ d.display_name }}</a> <span class="muted small">{{ d.mac }}{% if d.counts_for_presence %} · liczy się do obecności{% endif %}</span></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">Brak przypisanych urządzeń. Przypisz telefon tej osoby na stronie <a href="/devices">Urządzenia</a>.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Edycja</h2>
+  <form class="form-row" hx-patch="/api/persons/{{ person.id }}" hx-ext="hs-json" hx-swap="none" data-reload>
+    <label>Imię
+      <input name="name" required maxlength="64" value="{{ person.name }}">
+    </label>
+    <label>Kolor
+      <input type="color" name="color" value="{{ person.color or '#0f766e' }}">
+    </label>
+    <label>Prywatność
+      <select name="privacy_mode">
+        <option value="full"{% if person.privacy_mode == 'full' %} selected{% endif %}>Pełne dane</option>
+        <option value="stats_only"{% if person.privacy_mode == 'stats_only' %} selected{% endif %}>Tylko statystyki (bez nazw domen)</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn-primary">Zapisz</button>
+    <p class="form-status" role="status"></p>
+  </form>
+  <div class="actions">
+    <button type="button" class="btn btn-danger" hx-delete="/api/persons/{{ person.id }}" hx-swap="none"
+            hx-confirm="Usunąć tę osobę? Jej urządzenia pozostaną na liście jako nieprzypisane." data-redirect="/persons">Usuń osobę</button>
+    <p class="form-status" role="status"></p>
+  </div>
+</section>
+{% endblock %}

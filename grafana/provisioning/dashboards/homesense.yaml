@@ -1,0 +1,14 @@
+# HomeSense dashboards (grafana\dashboards\*.json).
+# {{DASHBOARDS_DIR}} is substituted by scripts/install.ps1; single quotes keep Windows backslashes literal.
+apiVersion: 1
+
+providers:
+  - name: HomeSense
+    orgId: 1
+    folder: HomeSense
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: '{{DASHBOARDS_DIR}}'

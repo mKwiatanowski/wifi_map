@@ -1,0 +1,9 @@
+Interface: 192.168.0.127 --- 0x7
+  Internet Address      Physical Address      Type
+  192.168.0.1           00-11-22-33-44-55     dynamic
+  192.168.0.23          da-a1-19-00-00-01     dynamic
+  192.168.0.255         ff-ff-ff-ff-ff-ff     static
+  224.0.0.22            01-00-5e-00-00-16     static
+Interfejs: 192.168.0.171 --- 0x12
+  Adres internetowy     Adres fizyczny        Typ
+  192.168.0.40          a4-83-e7-11-22-33     dynamiczny

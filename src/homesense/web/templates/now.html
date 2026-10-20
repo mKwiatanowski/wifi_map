@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Teraz – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Teraz</h1>
+  <span class="live muted small" id="live-status">Na żywo</span>
+</div>
+
+<section class="grid stats">
+  <a class="card stat" href="/devices?filter=online"><span class="stat-value">{{ online }}</span><span class="stat-label">urządzeń online</span></a>
+  <a class="card stat" href="/devices?filter=new"><span class="stat-value">{{ new_devices }}</span><span class="stat-label">nowych urządzeń (24 h)</span></a>
+  <a class="card stat" href="/alerts?unack=1"><span class="stat-value">{{ unacked }}</span><span class="stat-label">niepotwierdzonych alertów</span></a>
+</section>
+
+<h2>Domownicy</h2>
+<section id="presence-cards" hx-get="/partials/presence" hx-trigger="every 15s, hsrefresh from:body" hx-swap="innerHTML">
+  {% include "partials/presence_cards.html" %}
+</section>
+
+<h2>Ostatnie zdarzenia</h2>
+<section class="card">
+  <ul class="feed" id="event-feed" hx-get="/partials/events" hx-trigger="every 15s, hsrefresh from:body" hx-swap="innerHTML">
+    {% include "partials/event_feed.html" %}
+  </ul>
+</section>
+<script type="application/json" id="person-index">{{ person_index|tojson }}</script>
+{% endblock %}

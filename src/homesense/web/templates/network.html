@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Sieć – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Sieć</h1><span class="muted small">DNS z AdGuard Home, ostatnie 24 h</span></div>
+
+<section class="grid stats">
+  <div class="card stat"><span class="stat-value">{{ summary.queries }}</span><span class="stat-label">zapytań DNS</span></div>
+  <div class="card stat"><span class="stat-value">{{ summary.blocked }}</span><span class="stat-label">zablokowanych</span></div>
+  <div class="card stat"><span class="stat-value">{{ summary.clients }}</span><span class="stat-label">aktywnych urządzeń</span></div>
+  <div class="card stat"><span class="stat-value">{{ summary.new_domains }}</span><span class="stat-label">nowych domen</span></div>
+</section>
+
+<section class="card">
+  <h2>Zapytania na godzinę (48 h)</h2>
+  {% if has_dns %}
+  <div class="chart"><canvas data-chart="bar" data-source="chart-hourly" aria-label="Zapytania DNS na godzinę"></canvas></div>
+  {% else %}
+  <p class="empty">Brak danych DNS. Statystyki pojawią się, gdy AdGuard Home zacznie obsługiwać zapytania z sieci domowej.</p>
+  {% endif %}
+  <script type="application/json" id="chart-hourly">{{ hourly_chart|tojson }}</script>
+</section>
+
+<div class="grid two">
+  <section class="card">
+    <h2>Najczęstsze domeny</h2>
+    {% if top %}
+    <table class="table">
+      <thead><tr><th>Domena</th><th class="num">Zapytania</th><th class="num">Zablok.</th></tr></thead>
+      <tbody>{% for d in top %}<tr><td class="break">{{ d.domain }}</td><td class="num">{{ d.queries }}</td><td class="num">{{ d.blocked }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}
+    <p class="empty">Brak danych DNS z ostatnich 24 godzin.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Najczęściej blokowane</h2>
+    {% if blocked %}
+    <table class="table">
+      <thead><tr><th>Domena</th><th class="num">Zablokowane</th></tr></thead>
+      <tbody>{% for d in blocked %}<tr><td class="break">{{ d.domain }}</td><td class="num">{{ d.blocked }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}
+    <p class="empty">Brak zablokowanych zapytań.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <h2>Nowe domeny</h2>
+  {% if new_domains %}
+  <table class="table">
+    <thead><tr><th>Domena</th><th>Urządzenie</th><th>Pierwszy raz</th></tr></thead>
+    <tbody>{% for d in new_domains %}<tr><td class="break">{{ d.domain }}</td><td>{% if d.mac != 'unknown' %}<a href="/devices/{{ d.mac }}">{{ d.device }}</a>{% else %}nieznane{% endif %}</td><td>{{ d.first_seen|when }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% else %}
+  <p class="empty">Brak nowych domen z ostatnich 24 godzin.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Blokowanie domen</h2>
+  {% if not adguard %}<p class="muted small">AdGuard Home nie jest skonfigurowany — blokowanie jest niedostępne.</p>{% endif %}
+  <form class="form-row" hx-post="/api/network/block-domain" hx-ext="hs-json" hx-swap="none" data-success="Domena zablokowana.">
+    <label>Domena
+      <input name="domain" required maxlength="253" placeholder="np. example.com" autocomplete="off">
+    </label>
+    <button type="submit" class="btn btn-danger">Zablokuj</button>
+    <button type="button" class="btn" hx-post="/api/network/unblock-domain" hx-ext="hs-json" hx-swap="none" data-success="Domena odblokowana.">Odblokuj</button>
+    <p class="form-status" role="status"></p>
+  </form>
+</section>
+{% endblock %}

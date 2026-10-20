@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Mapa – HomeSense{% endblock %}
+{% block scripts %}<script src="/static/js/map.js" defer></script>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Mapa</h1>
+  <span class="muted small" id="map-status" role="status" aria-live="polite">Ładowanie…</span>
+</div>
+
+<p class="notice notice-info small">Kierunek na mapie jest umowny — router mierzy tylko siłę sygnału (odległość). Odległość jest szacowana z RSSI i może się mylić o kilka metrów (ściany, ciało, orientacja telefonu).</p>
+
+<form class="card map-filters" id="map-filters" aria-label="Filtry mapy">
+  <fieldset class="map-kinds">
+    <legend>Typ urządzenia</legend>
+    {% for key, label in kinds.items() %}
+    <label class="check"><input type="checkbox" name="kind" value="{{ key }}" checked> <span class="kind-badge kind-{{ key }}" aria-hidden="true"></span>{{ label }}</label>
+    {% endfor %}
+  </fieldset>
+  <div class="map-options">
+    <label>Osoba
+      <select name="person_id">
+        <option value="">Wszyscy</option>
+        {% for p in persons %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" name="online_only" checked> tylko online</label>
+    <label class="check"><input type="checkbox" name="trail"> pokaż ślad (30 min)</label>
+  </div>
+</form>
+
+<section class="card radar-card">
+  <svg class="radar" id="radar" viewBox="-320 -320 640 640" role="img" aria-labelledby="radar-title">
+    <title id="radar-title">Szacowana odległość urządzeń od routera</title>
+    <g class="radar-rings">
+      {% for r in rings %}
+      {% set px = (300 * (r / 30) ** 0.5)|round(1) %}
+      <circle r="{{ px }}"></circle>
+      <text x="4" y="{{ -px - 4 }}">~{{ r }} m</text>
+      {% endfor %}
+      <circle class="radar-edge" r="300"></circle>
+    </g>
+    <g id="radar-trails"></g>
+    <g class="radar-router" aria-label="Router">
+      <rect x="-16" y="-10" width="32" height="20" rx="4"></rect>
+      <line x1="-8" y1="-10" x2="-12" y2="-22"></line>
+      <line x1="8" y1="-10" x2="12" y2="-22"></line>
+      <text y="30">Router</text>
+    </g>
+    <g id="radar-dots"></g>
+  </svg>
+  <p class="empty" id="radar-empty" hidden>Brak urządzeń z danymi o sygnale dla wybranych filtrów.</p>
+</section>
+
+<section class="card map-legend" aria-label="Legenda">
+  <h2>Legenda</h2>
+  <ul class="legend-list">
+    {% for key, label in kinds.items() %}<li><span class="kind-badge kind-{{ key }}" aria-hidden="true"></span>{{ label }}</li>{% endfor %}
+  </ul>
+  <p class="small muted">Kolor kropki = kolor osoby (szara — urządzenie nieprzypisane). Przygaszona — offline. Przerywana obwódka — urządzenie przewodowe (zawsze przy routerze). Pierścienie: skala pierwiastkowa, żeby bliskie urządzenia się nie tłoczyły.</p>
+</section>
+
+<section class="card">
+  <h2>Brak danych o sygnale</h2>
+  <ul class="no-signal" id="no-signal"></ul>
+  <p class="small muted" id="no-signal-empty">Wszystkie widoczne urządzenia mają dane o sygnale.</p>
+</section>
+<script type="application/json" id="map-kind-labels">{{ kinds|tojson }}</script>
+{% endblock %}

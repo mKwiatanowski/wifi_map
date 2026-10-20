@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Analityka – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Analityka</h1><span class="muted small">Dashboardy Grafany</span></div>
+
+<div class="notice notice-warn" id="grafana-down" hidden role="alert">
+  Grafana jest niedostępna. Sprawdź, czy usługa Grafana działa (<code>homesense doctor</code>), i odśwież stronę.
+</div>
+
+<div x-data="{ tab: '{{ dashboards[0][0] }}' }" class="analytics">
+  <nav class="tabs" role="tablist" aria-label="Dashboardy">
+    {% for key, uid, label in dashboards %}
+    <button type="button" role="tab" x-on:click="tab = '{{ key }}'" x-bind:class="{ active: tab === '{{ key }}' }"
+            x-bind:aria-selected="tab === '{{ key }}'"{% if loop.first %} class="active"{% endif %}>{{ label }}</button>
+    {% endfor %}
+  </nav>
+  {% for key, uid, label in dashboards %}
+  <div class="frame-wrap" x-show="tab === '{{ key }}'"{% if not loop.first %} x-cloak{% endif %}>
+    <iframe src="/grafana/d/{{ uid }}?kiosk&amp;theme=dark" title="Grafana: {{ label }}" loading="lazy"></iframe>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

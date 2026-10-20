@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Pierwsze uruchomienie – HomeSense{% endblock %}
+{% block main_class %}auth{% endblock %}
+{% block content %}
+<section class="card auth-card">
+  <div class="auth-brand"><img src="/static/icons/favicon.svg" alt="" width="48" height="48"><span>HomeSense</span></div>
+  <h1>Utwórz pierwsze konto</h1>
+  <p class="muted">To konto administratora panelu HomeSense. Kolejne konta dodasz komendą <code>homesense create-user</code>.</p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/setup" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Token konfiguracji (plik <code>auth\setup-token.txt</code> w katalogu danych)
+      <input name="setup_token" autocomplete="off" spellcheck="false" required>
+    </label>
+    <label>Nazwa użytkownika
+      <input name="username" autocomplete="username" required value="{{ username or '' }}">
+    </label>
+    <label>Hasło (co najmniej {{ min_password }} znaków)
+      <input type="password" name="password" autocomplete="new-password" minlength="{{ min_password }}" required>
+    </label>
+    <label>Powtórz hasło
+      <input type="password" name="password_confirm" autocomplete="new-password" required>
+    </label>
+    <button type="submit" class="btn btn-primary">Utwórz konto</button>
+  </form>
+</section>
+{% endblock %}

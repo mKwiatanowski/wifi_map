@@ -1,0 +1,48 @@
+; HomeSense Grafana configuration (rendered by scripts/install.ps1 into Grafana's conf\custom.ini).
+; Placeholders: {{DATA_DIR}} - HomeSense data directory, {{PROVISIONING_DIR}} - copied grafana\provisioning.
+; Grafana is only reachable through the app's authenticated reverse proxy at /grafana/.
+
+[server]
+; Loopback only (never all interfaces): the app proxy is the only entry point.
+http_addr = 127.0.0.1
+http_port = 3000
+root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana/
+serve_from_sub_path = true
+
+[paths]
+data = {{DATA_DIR}}/grafana
+logs = {{DATA_DIR}}/grafana/logs
+provisioning = {{PROVISIONING_DIR}}
+
+[security]
+; Dashboards are embedded in iframes on the app's /analytics page.
+allow_embedding = true
+cookie_samesite = lax
+disable_gravatar = true
+; No built-in admin/admin account: everything is provisioned, and an admin could add an
+; unrestricted datasource (e.g. pointing at auth.db). Nobody can log in to Grafana at all.
+disable_initial_admin_creation = true
+; enforce_domain is deliberately not set: the app proxy reaches Grafana as Host 127.0.0.1:3000,
+; which would not match root_url's domain and would be redirected.
+
+[auth]
+disable_login_form = false
+
+[auth.anonymous]
+; Anyone who passed the app proxy (i.e. is logged in to HomeSense) gets read-only access.
+enabled = true
+org_role = Viewer
+
+[users]
+allow_sign_up = false
+
+[analytics]
+reporting_enabled = false
+check_for_updates = false
+check_for_plugin_updates = false
+
+[snapshots]
+external_enabled = false
+
+[news]
+news_feed_enabled = false

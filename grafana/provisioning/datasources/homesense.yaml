@@ -1,0 +1,22 @@
+# HomeSense SQLite database (frser-sqlite-datasource plugin).
+# {{DB_PATH}} is substituted by scripts/install.ps1; single quotes keep Windows backslashes literal.
+apiVersion: 1
+
+datasources:
+  - name: HomeSense
+    type: frser-sqlite-datasource
+    uid: homesense-sqlite
+    access: proxy
+    isDefault: true
+    editable: false
+    jsonData:
+      # Read-only: the plugin opens pathPrefix + path + '?' + pathOptions. mode=ro makes SQLite open
+      # the file read-only; query_only(1) (also the plugin's default) refuses writes on every attached
+      # database too. The plugin additionally sets SQLITE_LIMIT_ATTACHED=0 (no ATTACH at all) unless
+      # GF_PLUGIN_UNSAFE_ALLOW_ATTACH_LIMIT_ABOVE_ZERO=true - never set that. Login accounts are in a
+      # separate auth.db that Grafana is not pointed at.
+      # {{DB_PATH}} becomes part of a file: URI: render it with forward slashes and percent-encode
+      # '%', '#', '?' and spaces (e.g. C:/Home%20Sense/data/homesense.db).
+      pathPrefix: 'file:'
+      path: '{{DB_PATH}}'
+      pathOptions: 'mode=ro&_pragma=query_only(1)'

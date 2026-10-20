@@ -1,0 +1,35 @@
+<!--
+  WinSW v2.12.0 service definition for HomeSense, rendered by scripts/install.ps1 next to HomeSense.exe.
+  Placeholders (XML-escaped on substitution): {{EXECUTABLE}} venv homesense.exe, {{INSTALL_DIR}},
+  {{DATA_DIR}}, {{LOG_DIR}}. Runs as the virtual account NT SERVICE\HomeSense, not LocalSystem:
+  ARP scanning only uses ping.exe and arp -a, and the panel listens on 8080 (no admin rights needed).
+  <executable> is a quoted absolute path; WinSW registers its own ImagePath quoted as well.
+-->
+<service>
+  <id>HomeSense</id>
+  <name>HomeSense</name>
+  <description>HomeSense - domowy monitoring obecnosci i sieci (panel http://127.0.0.1:8080).</description>
+  <executable>"{{EXECUTABLE}}"</executable>
+  <arguments>serve</arguments>
+  <!-- .env is read from the working directory. -->
+  <workingdirectory>{{INSTALL_DIR}}</workingdirectory>
+  <!-- Services only see new machine environment variables after a reboot, so set it here too. -->
+  <env name="HOMESENSE_DATA_DIR" value="{{DATA_DIR}}"/>
+  <env name="PYTHONUNBUFFERED" value="1"/>
+  <serviceaccount>
+    <domain>NT SERVICE</domain>
+    <user>HomeSense</user>
+  </serviceaccount>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart/>
+  <stoptimeout>20 sec</stoptimeout>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <logpath>{{LOG_DIR}}</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+</service>

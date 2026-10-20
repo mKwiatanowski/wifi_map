@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Osoby – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Osoby</h1></div>
+
+{% if cards %}
+<div class="grid cards">
+  {% for c in cards %}
+  <a class="card person-card{% if c.home %} is-home{% endif %}" href="/persons/{{ c.person.id }}"{% if c.person.color %} data-color="{{ c.person.color }}"{% endif %}>
+    <div class="person-head">
+      <span class="avatar">{{ c.person.name[:1] }}</span>
+      <div>
+        <div class="person-name">{{ c.person.name }}</div>
+        <div class="status"><span class="dot {{ 'dot-on' if c.home else 'dot-off' }}"></span>{{ 'W domu' if c.home else 'Poza domem' }}</div>
+      </div>
+    </div>
+    <div class="muted small">
+      Urządzenia: {{ device_counts.get(c.person.id, 0) }}
+      {% if c.person.privacy_mode == 'stats_only' %} · tylko statystyki{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty">Brak osób. Dodaj pierwszego domownika poniżej, a potem przypisz mu telefon na stronie <a href="/devices">Urządzenia</a>.</p>
+{% endif %}
+
+<section class="card">
+  <h2>Dodaj osobę</h2>
+  <form class="form-row" hx-post="/api/persons" hx-ext="hs-json" hx-swap="none" data-reload>
+    <label>Imię
+      <input name="name" required maxlength="64" autocomplete="off">
+    </label>
+    <label>Kolor
+      <input type="color" name="color" value="#0f766e">
+    </label>
+    <label>Prywatność
+      <select name="privacy_mode">
+        <option value="full">Pełne dane</option>
+        <option value="stats_only">Tylko statystyki (bez nazw domen)</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn-primary">Dodaj</button>
+    <p class="form-status" role="status"></p>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ device.display_name }} – HomeSense{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ device.display_name }}</h1>
+  <span class="status"><span class="dot {{ 'dot-on' if online else 'dot-off' }}"></span>{{ 'Online' if online else 'Offline' }} · ostatnio {{ device.last_seen|when }}</span>
+</div>
+
+<div class="grid two">
+  <section class="card">
+    <h2>Szczegóły</h2>
+    <dl class="details">
+      <dt>MAC</dt><dd>{{ device.mac }}{% if device.is_random %} <span class="tag">losowy</span>{% endif %}</dd>
+      <dt>IP</dt><dd>{{ device.ip or '—' }}</dd>
+      <dt>Nazwa hosta</dt><dd>{{ device.hostname or '—' }}</dd>
+      <dt>Producent</dt><dd>{{ device.vendor or '—' }}</dd>
+      <dt>Osoba</dt><dd>{% if owner %}<a href="/persons/{{ owner.id }}">{{ owner.name }}</a>{% else %}—{% endif %}</dd>
+      <dt>Pierwszy raz</dt><dd>{{ device.first_seen|when }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Ustawienia urządzenia</h2>
+    <form class="stack" hx-patch="/api/devices/{{ device.mac }}" hx-ext="hs-json" hx-swap="none" data-reload>
+      <label>Etykieta
+        <input name="label" maxlength="64" value="{{ device.label or '' }}" placeholder="{{ device.hostname or device.mac }}">
+      </label>
+      <label>Osoba
+        <select name="person_id" data-type="int">
+          <option value="">— nieprzypisane —</option>
+          {% for p in persons %}<option value="{{ p.id }}"{% if p.id == device.person_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Typ
+        <select name="kind" data-type="nullable">
+          <option value="">— nieokreślony —</option>
+          {% for key, label in kinds.items() %}<option value="{{ key }}"{% if key == device.kind %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="counts_for_presence"{% if device.counts_for_presence %} checked{% endif %}> Liczy się do obecności (telefon noszony przy sobie)</label>
+      <label class="check"><input type="checkbox" name="trusted"{% if device.trusted %} checked{% endif %}> Zaufane (bez alertów o nieznanym urządzeniu)</label>
+      <label>Notatki
+        <textarea name="notes" maxlength="500" rows="2">{{ device.notes or '' }}</textarea>
+      </label>
+      <button type="submit" class="btn btn-primary">Zapisz</button>
+      <p class="form-status" role="status"></p>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Obecność w sieci (24 h)</h2>
+  {% if online_chart %}
+  <div class="chart"><canvas data-chart="bar" data-source="chart-online" aria-label="Minuty online w każdej godzinie"></canvas></div>
+  <script type="application/json" id="chart-online">{{ online_chart|tojson }}</script>
+  {% else %}
+  <p class="empty">Brak danych o obecności w sieci z ostatnich 24 godzin.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Ruch (24 h)</h2>
+  {% if traffic_chart %}
+  <div class="chart"><canvas data-chart="line" data-source="chart-traffic" aria-label="Ruch wysyłany i pobierany"></canvas></div>
+  <script type="application/json" id="chart-traffic">{{ traffic_chart|tojson }}</script>
+  {% else %}
+  <p class="empty">Brak danych o ruchu tego urządzenia.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Najczęstsze domeny (24 h)</h2>
+  {% if private %}
+  <p class="empty">Nazwy domen są ukryte: osoba {{ owner.name }} ma tryb prywatności „tylko statystyki”.</p>
+  {% elif domains %}
+  <table class="table">
+    <thead><tr><th>Domena</th><th class="num">Zapytania</th><th class="num">Zablokowane</th></tr></thead>
+    <tbody>
+    {% for d in domains %}<tr><td class="break">{{ d.domain }}</td><td class="num">{{ d.queries }}</td><td class="num">{{ d.blocked }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Brak danych DNS dla tego urządzenia.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Blokowanie (AdGuard)</h2>
+  <div class="actions">
+    <button type="button" class="btn btn-danger" hx-post="/api/network/block-device" hx-ext="hs-json" hx-swap="none"
+            hx-vals='{"mac": {{ device.mac|tojson }}}' hx-confirm="Zablokować DNS dla tego urządzenia?" data-success="Urządzenie zablokowane.">Zablokuj urządzenie</button>
+    <button type="button" class="btn" hx-post="/api/network/unblock-device" hx-ext="hs-json" hx-swap="none"
+            hx-vals='{"mac": {{ device.mac|tojson }}}' data-success="Urządzenie odblokowane.">Odblokuj</button>
+    <p class="form-status" role="status"></p>
+  </div>
+</section>
+{% endblock %}
