@@ -290,18 +290,23 @@
     };
   }
 
+  // Drawing a room uses pointer events (drag); placing the router and measuring use click, so a
+  // finger scrolling the page over the plan never starts a measurement.
   function onPointerDown(evt) {
-    if (!state.plan) return;
+    if (!state.plan || selectedMode() !== "room") return;
     const at = toMetres(evt);
+    state.drag = { start: at, end: at };
+    $("coverage-canvas").setPointerCapture(evt.pointerId);
+  }
+
+  function onClick(evt) {
+    if (!state.plan) return;
     const mode = selectedMode();
     if (mode === "router") {
-      state.plan.router = at;
+      state.plan.router = toMetres(evt);
       savePlan();
-    } else if (mode === "room") {
-      state.drag = { start: at, end: at };
-      $("coverage-canvas").setPointerCapture(evt.pointerId);
-    } else {
-      startMeasurement(at);
+    } else if (mode === "measure") {
+      startMeasurement(toMetres(evt));
     }
   }
 
@@ -494,6 +499,7 @@
     }
     const canvas = $("coverage-canvas");
     canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("click", onClick);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", () => {
