@@ -19,6 +19,7 @@ from homesense.api.deps import csrf_protect, csrf_token, current_user, get_core,
 from homesense.app import HomeSenseApp
 from homesense.core.models import Alert, Device, Person, normalize_mac
 from homesense.core.timeutil import floor_hour, to_local
+from homesense.monitoring import PAUSE_HOURS, MonitoringState
 from homesense.network import analysis
 from homesense.network.adguard import AdGuardClient, AdGuardError
 from homesense.patterns.profiles import PERSON_HOME, typical_times
@@ -144,11 +145,34 @@ class PauseIn(BaseModel):
     minutes: Annotated[int, Field(ge=1, le=24 * 60)] = 15
 
 
+class MonitoringPauseIn(BaseModel):
+    """hours: 1, 8 or 24; null = until resumed by hand."""
+
+    model_config = ConfigDict(extra="forbid")
+    hours: int | None = None
+
+    @field_validator("hours")
+    @classmethod
+    def _allowed_hours(cls, value: int | None) -> int | None:
+        if value is not None and value not in PAUSE_HOURS:
+            raise ValueError(f"hours must be one of {PAUSE_HOURS} or null")
+        return value
+
+
 # --- serialization ---
 
 
 def _iso(dt: datetime | None) -> str | None:
     return None if dt is None else dt.isoformat()
+
+
+def monitoring_json(state: MonitoringState) -> dict:
+    return {
+        "paused": state.paused,
+        "since": _iso(state.since),
+        "until": _iso(state.until),
+        "resumed_at": _iso(state.resumed_at),
+    }
 
 
 def _person(p: Person) -> dict:
@@ -253,6 +277,7 @@ def health(request: Request, core: Core) -> dict:
     if not (_is_loopback(request) or current_user(request) is not None):
         return status_only
     statuses = {s.name: s for s in core.repos.collector_status.all()}
+    paused = core.monitoring.is_paused()
     collectors = []
     for collector in core.collectors:
         st = statuses.get(collector.name)
@@ -263,12 +288,14 @@ def health(request: Request, core: Core) -> dict:
                 "last_error_ts": _iso(st.last_error_ts) if st else None,
                 "consecutive_failures": st.consecutive_failures if st else 0,
                 "paused_until": _iso(core.runner.paused_until(collector.name)),
+                "paused": paused or core.runner.paused_until(collector.name) is not None,
             }
         )
     return {
         **status_only,
         "collectors": collectors,
         "people_home": sum(1 for s in core.presence.states() if s.home),
+        "monitoring": monitoring_json(core.monitoring.state()),
     }
 
 
@@ -606,6 +633,29 @@ async def test_notification(body: ChannelIn, core: Core) -> dict:
             status.HTTP_502_BAD_GATEWAY, "Nie udało się wysłać powiadomienia testowego."
         ) from None
     return {"ok": True}
+
+
+# --- monitoring on/off ---
+
+
+@router.get("/monitoring")
+def get_monitoring(core: Core) -> dict:
+    return monitoring_json(core.monitoring.state())
+
+
+@router.post("/monitoring/pause")
+async def pause_monitoring(core: Core, user: User, body: MonitoringPauseIn | None = None) -> dict:
+    hours = (body or MonitoringPauseIn()).hours
+    state = await core.monitoring.pause(None if hours is None else timedelta(hours=hours))
+    log.info("monitoring paused by %s for %s", user, f"{hours} h" if hours else "until resumed")
+    return monitoring_json(state)
+
+
+@router.post("/monitoring/resume")
+async def resume_monitoring(core: Core, user: User) -> dict:
+    state = await core.monitoring.resume()
+    log.info("monitoring resumed by %s", user)
+    return monitoring_json(state)
 
 
 # --- router ---

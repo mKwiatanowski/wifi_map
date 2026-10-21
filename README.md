@@ -184,6 +184,22 @@ Alternatywnie w PowerShell (administrator): `cd C:\HomeSense; .\venv\Scripts\hom
 
 Po każdej zmianie `.env`: `Restart-Service HomeSense`.
 
+## Włączanie i wyłączanie monitoringu
+
+W pasku u góry każdej strony panelu widać stan: **„Monitoring: włączony”** albo **„Monitoring:
+wstrzymany do HH:MM”**. Przycisk **Wstrzymaj** pozwala wybrać czas: 1 h, 8 h, 24 h albo „do
+odwołania”; **Wznów** włącza monitoring od razu. Te same przyciski są w **Ustawienia → Monitoring**.
+Usługa cały czas działa, więc monitoring można włączyć z powrotem z panelu (bez `Stop-Service`).
+
+Podczas wstrzymania HomeSense nie odpytuje routera, nie skanuje ARP, nie pobiera DNS z AdGuarda (także
+w trybie symulacji), nie uruchamia detektorów anomalii i nie wysyła powiadomień. Zapytania DNS
+zarejestrowane przez AdGuarda w czasie przerwy nie są później wczytywane. Stan obecności jest
+„zamrożony”: przerwa nie oznacza, że wszyscy wyszli. Po wznowieniu HomeSense przez czas
+`HOMESENSE_DEPARTURE_TIMEOUT_MIN` (domyślnie 15 min) nie zapisuje wyjść — kto jest w domu, zostanie w tym
+czasie zauważony ponownie; kto wyszedł w czasie przerwy, dostanie wyjście z godziną ostatniego
+zauważenia. Pauza na czas kończy się sama, a stan pauzy przetrwa restart usługi. Ikona w zasobniku
+jest wtedy szara z podpisem „HomeSense — monitoring wstrzymany”.
+
 ## Mapa urządzeń
 
 Zakładka **Mapa** pokazuje widok z góry: router w środku, wokół niego urządzenia w szacowanej odległości (pierścienie ~2 / 5 / 10 / 20 m, skala pierwiastkowa). Kolor kropki to kolor osoby (szary — nieprzypisane), litera to typ urządzenia (telefon, komputer, tablet, TV, IoT, nieznane). Można filtrować po typie i osobie, pokazać tylko urządzenia online i ślad z ostatnich 30 minut. Widok odświeża się co 10 s.
@@ -211,8 +227,9 @@ ciszę nocną) — w panelu: **Ustawienia → Powiadomienia**. Tam też jest prz
 ## Ikona w zasobniku i aplikacja na telefonie (PWA)
 
 - **Komputer docelowy**: po zalogowaniu do Windows w zasobniku pojawia się ikona HomeSense (kolor = stan
-  systemu). Kliknięcie otwiera okno panelu; menu: „Otwórz w przeglądarce”, „Wstrzymaj router
-  15 min”, „Zakończ”.
+  systemu; szara — monitoring wstrzymany). Kliknięcie otwiera okno panelu; menu: „Otwórz
+  w przeglądarce”, „Wstrzymaj / wznów monitoring” i „Wstrzymaj router 15 min” (oba otwierają
+  Ustawienia — zmiana wymaga zalogowania), „Zakończ”.
 - **Telefon**: otwórz `http://<IP-komputera>:8080` w przeglądarce będąc w domowej sieci, zaloguj się
   i wybierz **„Dodaj do ekranu głównego”** (Safari: przycisk Udostępnij; Chrome: menu ⋮). Panel
   działa wtedy jak aplikacja. Poza domem nie jest dostępny (to celowe — nic nie jest wystawione do

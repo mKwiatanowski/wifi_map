@@ -164,6 +164,7 @@ def test_menu_labels_in_order(controller):
     assert [label for label, _ in controller.menu_entries()] == [
         "Otwórz panel",
         "Otwórz w przeglądarce",
+        "Wstrzymaj / wznów monitoring",
         "Wstrzymaj router 15 min",
         "Zakończ",
     ]
@@ -173,8 +174,9 @@ def test_menu_actions_open_panel_browser_and_settings(controller):
     actions = dict(controller.menu_entries())
     actions["Otwórz panel"]()
     actions["Otwórz w przeglądarce"]()
+    actions["Wstrzymaj / wznów monitoring"]()
     actions["Wstrzymaj router 15 min"]()
-    assert controller.windows == [f"{BASE}/", f"{BASE}/settings"]
+    assert controller.windows == [f"{BASE}/", f"{BASE}/settings#monitoring", f"{BASE}/settings"]
     assert controller.browser == [f"{BASE}/"]
 
 
@@ -198,6 +200,18 @@ def test_apply_health_updates_title_and_icon(controller, monkeypatch):
     controller.apply_health(None)
     assert icon.title == "HomeSense — brak połączenia"
     assert icon.icon == ("icon", (200, 50, 50))
+
+
+def test_apply_health_paused_monitoring_is_grey(controller, monkeypatch):
+    monkeypatch.setattr(tray, "make_icon", lambda color: ("icon", color))
+    icon = FakeIcon()
+    controller.icon = icon
+    controller.apply_health({"status": "ok", "people_home": 1, "monitoring": {"paused": True, "until": None}})
+    assert icon.title == "HomeSense — monitoring wstrzymany"
+    assert icon.icon == ("icon", tray.GREY)
+    controller.apply_health({"status": "ok", "people_home": 1, "monitoring": {"paused": False}})
+    assert icon.title == "HomeSense — 1 osoba w domu"
+    assert icon.icon == ("icon", tray.GREEN)
 
 
 @respx.mock
@@ -276,6 +290,7 @@ def test_main_builds_icon_and_runs(monkeypatch, settings):
     assert [item[0] for item in created["menu"]] == [
         "Otwórz panel",
         "Otwórz w przeglądarce",
+        "Wstrzymaj / wznów monitoring",
         "Wstrzymaj router 15 min",
         "Zakończ",
     ]

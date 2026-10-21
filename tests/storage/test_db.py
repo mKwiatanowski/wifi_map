@@ -1,18 +1,20 @@
 from sqlalchemy import text
 
-from homesense.storage.db import Database
+from homesense.storage.db import MIGRATIONS_DIR, Database
+
+LATEST = max(int(p.name[:4]) for p in MIGRATIONS_DIR.glob("*.sql"))
 
 
 def test_migrate_idempotent(tmp_path):
     db = Database(tmp_path / "x.db")
-    assert db.migrate() == 2
-    assert db.migrate() == 2
+    assert db.migrate() == LATEST
+    assert db.migrate() == LATEST
     db.close()
 
 
 def test_creates_parent_dir(tmp_path):
     db = Database(tmp_path / "nested" / "dir" / "x.db")
-    assert db.migrate() == 2
+    assert db.migrate() == LATEST
     assert (tmp_path / "nested" / "dir" / "x.db").exists()
     db.close()
 

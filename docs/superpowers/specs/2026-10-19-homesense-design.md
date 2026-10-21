@@ -205,12 +205,13 @@ Panel (Jinja2 + HTMX, po polsku, ciemny/jasny motyw, responsywny):
 - **Sieć** — top domen, zablokowane, nowe domeny, wykres zapytań/h, akcje: zablokuj domenę / urządzenie, odblokuj.
 - **Analityka** — osadzone dashboardy Grafany (iframe `/grafana/d/...?kiosk`).
 - **Alerty** — lista, potwierdzanie, filtr.
-- **Ustawienia** — kanały powiadomień (+ „wyślij test”), reguły, cisza nocna, progi, retencja, pauza routera.
+- **Ustawienia** — kanały powiadomień (+ „wyślij test”), reguły, cisza nocna, progi, retencja, pauza routera, wstrzymanie monitoringu.
+- **Przełącznik monitoringu** (pasek u góry każdej strony + Ustawienia): „Monitoring: włączony / wstrzymany do HH:MM”, pauza 1 h / 8 h / 24 h / do odwołania, „Wznów”. Stan w tabeli `monitoring_pauses` (przetrwa restart), API `GET /api/monitoring`, `POST /api/monitoring/pause` (`{"hours": 1|8|24|null}`), `POST /api/monitoring/resume`, zdarzenie `MonitoringChanged` przez SSE. W czasie pauzy kolektory, obecność, detektory i alerty stoją; po wznowieniu obecność wstrzymuje wyjścia na jeden `departure_timeout`.
 - **Co zbiera system** — przejrzysty opis zbieranych danych dla domowników.
 
 Bezpieczeństwo: logowanie (użytkownik + hasło, `argon2`/`bcrypt` przez `passlib` lub `hashlib.scrypt`), sesja cookie podpisana (`itsdangerous`), CSRF dla formularzy (token w sesji), nasłuch domyślnie `0.0.0.0:8080` tylko LAN (README: nie wystawiać na internet). Grafana: `http_addr=127.0.0.1`, `serve_from_sub_path=true`, `root_url=%(protocol)s://%(domain)s/grafana/`, `allow_embedding=true`, anonimowy Viewer; dostęp wyłącznie przez proxy `/grafana/*`, które wymaga sesji aplikacji.
 
-PWA: `manifest.webmanifest`, ikony, `sw.js` (cache statyk, offline fallback). Tray: `pystray` ikona (zielona/żółta/czerwona wg `/api/health`), menu: „Otwórz panel” (okno `pywebview`), „Otwórz w przeglądarce”, „Wstrzymaj router 15 min”, „Zakończ tray”.
+PWA: `manifest.webmanifest`, ikony, `sw.js` (cache statyk, offline fallback). Tray: `pystray` ikona (zielona/żółta/czerwona wg `/api/health`, szara przy wstrzymanym monitoringu), menu: „Otwórz panel” (okno `pywebview`), „Otwórz w przeglądarce”, „Wstrzymaj / wznów monitoring”, „Wstrzymaj router 15 min”, „Zakończ tray”.
 
 ## 8. Instalacja i uruchomienie
 

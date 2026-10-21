@@ -60,3 +60,18 @@ async def test_custom_dedup_window(repos, clock):
     await service.raise_alert(_alert(clock.now()))
     clock.advance(timedelta(minutes=11))
     assert await service.raise_alert(_alert(clock.now())) is not None
+
+
+async def test_alerts_suppressed_while_monitoring_paused(repos, clock, raised):
+    paused = True
+    bus = EventBus()
+
+    async def on_raised(e):
+        raised.append(e)
+
+    bus.subscribe(AlertRaised, on_raised)
+    service = AlertService(repos, bus, clock, suppressed=lambda: paused)
+    assert await service.raise_alert(_alert(clock.now())) is None
+    assert repos.alerts.list() == [] and raised == []
+    paused = False
+    assert await service.raise_alert(_alert(clock.now())) is not None

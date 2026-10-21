@@ -275,3 +275,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .kind-tv::before { content: "TV"; }
 .kind-iot::before { content: "I"; }
 .kind-unknown::before { content: "?"; }
+
+/* --- monitoring switch (header + settings) --- */
+.monitoring { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.5rem; font-size: 0.85rem; color: var(--muted); }
+.monitoring.is-paused { color: var(--warn); font-weight: 600; }
+.topbar .monitoring { order: 2; }
+.mon-menu { position: relative; }
+.mon-menu summary { list-style: none; }
+.mon-menu summary::-webkit-details-marker { display: none; }
+.mon-options {
+  position: absolute; z-index: 20; top: calc(100% + 0.25rem); right: 0; display: flex; flex-direction: column; gap: 0.25rem;
+  padding: 0.4rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); min-width: 9rem;
+}
+.card .monitoring { font-size: 0.95rem; }
+.card .mon-options { left: 0; right: auto; }

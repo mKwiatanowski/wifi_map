@@ -8,6 +8,7 @@ from homesense.storage.repositories.alerts import AlertRepo
 from homesense.storage.repositories.collector_status import CollectorStatusRepo
 from homesense.storage.repositories.devices import DeviceRepo
 from homesense.storage.repositories.dns import DnsRepo
+from homesense.storage.repositories.monitoring import MonitoringRepo
 from homesense.storage.repositories.observations import ObservationRepo
 from homesense.storage.repositories.persons import PersonRepo
 from homesense.storage.repositories.presence import PresenceRepo
@@ -20,6 +21,7 @@ __all__ = [
     "CollectorStatusRepo",
     "DeviceRepo",
     "DnsRepo",
+    "MonitoringRepo",
     "ObservationRepo",
     "PersonRepo",
     "PresenceRepo",
@@ -41,6 +43,7 @@ class Repos:
     profiles: ProfileRepo
     settings: SettingsRepo
     collector_status: CollectorStatusRepo
+    monitoring: MonitoringRepo
 
     @classmethod
     def create(cls, db: Database, clock: Clock | None = None) -> Repos:
@@ -58,4 +61,5 @@ class Repos:
             profiles=ProfileRepo(db, clock),
             settings=SettingsRepo(db, clock),
             collector_status=CollectorStatusRepo(db, clock),
+            monitoring=MonitoringRepo(db, clock),
         )

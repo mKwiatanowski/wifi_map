@@ -130,3 +130,20 @@ class NewDeviceEvent:
 @dataclass(frozen=True)
 class AlertRaised:
     alert: Alert
+
+
+@dataclass(frozen=True)
+class MonitoringPause:
+    id: int
+    start_ts: datetime
+    until_ts: datetime | None  # None = until resumed by hand
+    end_ts: datetime | None  # None = still paused
+
+
+@dataclass(frozen=True)
+class MonitoringChanged:
+    """Published when monitoring is paused or resumed (also on auto-resume of a timed pause)."""
+
+    paused: bool
+    until: datetime | None
+    ts: datetime

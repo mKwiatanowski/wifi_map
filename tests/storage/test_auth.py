@@ -8,7 +8,6 @@ import pytest
 
 from homesense.security import hash_password, verify_password
 from homesense.storage.auth import (
-    USERS_MOVED_VERSION,
     migrate_databases,
     open_auth_db,
     open_settings_auth_db,
@@ -16,6 +15,8 @@ from homesense.storage.auth import (
 )
 from homesense.storage.db import MIGRATIONS_DIR, Database
 from homesense.storage.repositories import UserRepo
+
+LATEST_VERSION = max(int(p.name[:4]) for p in MIGRATIONS_DIR.glob("*.sql"))
 
 
 @pytest.fixture
@@ -48,18 +49,18 @@ def _main_users(path) -> list[tuple]:
 
 def test_fresh_install_creates_both_databases(tmp_path):
     main, auth = Database(tmp_path / "homesense.db"), open_auth_db(tmp_path / "auth.db")
-    assert migrate_databases(main, auth) == USERS_MOVED_VERSION
+    assert migrate_databases(main, auth) == LATEST_VERSION
     assert not main.has_table("users")
     assert auth.has_table("users")
     assert UserRepo(auth).count() == 0
-    assert migrate_databases(main, auth) == USERS_MOVED_VERSION  # idempotent
+    assert migrate_databases(main, auth) == LATEST_VERSION  # idempotent
     main.close()
     auth.close()
 
 
 def test_upgrade_moves_existing_users_to_auth_db(tmp_path, v1_main):
     main, auth = Database(v1_main), open_auth_db(tmp_path / "auth.db")
-    assert migrate_databases(main, auth) == USERS_MOVED_VERSION
+    assert migrate_databases(main, auth) == LATEST_VERSION
     assert not main.has_table("users")
     row = UserRepo(auth).get_by_username("admin")
     assert row is not None and verify_password("stare-haslo", row[2])

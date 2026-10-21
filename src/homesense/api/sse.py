@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from homesense.api.deps import get_core, require_user
 from homesense.app import HomeSenseApp
 from homesense.core.events import EventBus
-from homesense.core.models import AlertRaised, NewDeviceEvent, PresenceEvent
+from homesense.core.models import AlertRaised, MonitoringChanged, NewDeviceEvent, PresenceEvent
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ HEARTBEAT_S = 15.0
 QUEUE_SIZE = 100
 # Only these events reach the browser. ObservationsBatch carries raw DNS queries (domain names even
 # of stats_only persons, before ingest drops them), so it is never streamed.
-STREAMED_EVENTS = (PresenceEvent, NewDeviceEvent, AlertRaised)
+STREAMED_EVENTS = (PresenceEvent, NewDeviceEvent, AlertRaised, MonitoringChanged)
 
 
 def _jsonable(value: Any) -> Any:

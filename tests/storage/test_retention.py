@@ -24,7 +24,7 @@ def test_retention_purges_old(repos, clock):
 
     result = purge_old(repos, now, 30)
 
-    assert result == {"observations": 1, "presence": 2, "dns": 2, "alerts": 1}
+    assert result == {"observations": 1, "presence": 2, "dns": 2, "alerts": 1, "monitoring_pauses": 0}
     assert len(repos.observations.for_device(MAC, old - timedelta(days=1), now)) == 1
     assert len(repos.alerts.list()) == 1
     assert repos.dns.top_domains(MAC, old - timedelta(days=1)) == [("a.com", 1, 0)]
@@ -54,3 +54,12 @@ def test_vacuum_runs(repos, db, clock):
     repos.settings.set("k", "v" * 1000)
     vacuum(db)
     assert repos.settings.get("k") == "v" * 1000
+
+
+def test_retention_purges_only_old_closed_monitoring_pauses(repos, clock):
+    now = clock.now()
+    repos.monitoring.start(now - timedelta(days=40), now - timedelta(days=39))
+    repos.monitoring.close(now - timedelta(days=39))
+    repos.monitoring.start(now - timedelta(days=35), None)  # still open: kept
+    assert purge_old(repos, now, 30)["monitoring_pauses"] == 1
+    assert repos.monitoring.open_pause() is not None

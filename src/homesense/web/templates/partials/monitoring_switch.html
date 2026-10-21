@@ -1,0 +1,14 @@
+{# Monitoring on/off switch (header and settings). app.js keeps every [data-monitoring-box] in sync
+   (button responses and the MonitoringChanged SSE event). #}
+<div class="monitoring{% if monitoring.paused %} is-paused{% endif %}" data-monitoring-box role="group" aria-label="Monitoring">
+  <span class="dot {{ 'dot-warn' if monitoring.paused else 'dot-on' }} js-mon-dot" aria-hidden="true"></span>
+  <span class="js-mon-text" role="status" aria-live="polite">Monitoring: {% if monitoring.paused %}wstrzymany {% if monitoring.until %}do {{ monitoring.until|when }}{% else %}do odwołania{% endif %}{% else %}włączony{% endif %}</span>
+  <details class="mon-menu js-mon-pause"{% if monitoring.paused %} hidden{% endif %}>
+    <summary class="btn btn-small">Wstrzymaj</summary>
+    <div class="mon-options">
+      {% for h in pause_hours %}<button type="button" class="btn btn-small" hx-post="/api/monitoring/pause" hx-ext="hs-json" hx-swap="none" hx-vals='{"hours": "{{ h }}"}' data-monitoring>na {{ h }} h</button>{% endfor %}
+      <button type="button" class="btn btn-small" hx-post="/api/monitoring/pause" hx-ext="hs-json" hx-swap="none" data-monitoring>do odwołania</button>
+    </div>
+  </details>
+  <button type="button" class="btn btn-small btn-primary js-mon-resume" hx-post="/api/monitoring/resume" hx-ext="hs-json" hx-swap="none" data-monitoring{% if not monitoring.paused %} hidden{% endif %}>Wznów</button>
+</div>

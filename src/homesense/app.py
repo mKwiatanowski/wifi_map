@@ -26,6 +26,7 @@ from homesense.core.events import EventBus
 from homesense.core.models import AlertRaised, ObservationsBatch
 from homesense.core.registry import Registry
 from homesense.ingest import Ingest
+from homesense.monitoring import MonitoringControl
 from homesense.network.adguard import AdGuardClient
 from homesense.notifications.base import Notifier
 from homesense.notifications.log import LogNotifier
@@ -71,7 +72,8 @@ class HomeSenseApp:
         self.auth_db = open_settings_auth_db(settings)
         self.users = UserRepo(self.auth_db, self.clock)
         self.bus = EventBus()
-        self.alerts = AlertService(self.repos, self.bus, self.clock)
+        self.monitoring = MonitoringControl(self.repos.monitoring, self.bus, self.clock)
+        self.alerts = AlertService(self.repos, self.bus, self.clock, suppressed=self.monitoring.is_paused)
         self.vendor = VendorLookup()
         self.ingest = Ingest(self.repos, self.bus, self.alerts, self.clock, vendor=self.vendor.lookup)
         self.presence = PresenceEngine(
@@ -80,6 +82,7 @@ class HomeSenseApp:
             self.alerts,
             self.clock,
             departure_timeout=timedelta(minutes=settings.departure_timeout_min),
+            resumed_at=self.monitoring.resumed_at,
         )
         self.profiles = ProfileBuilder(self.repos, self.clock, tz=settings.timezone)
         self.detectors: list[Detector] = default_detectors()
@@ -108,7 +111,11 @@ class HomeSenseApp:
         )
         self.collectors: list[Collector] = self.build_collectors()
         self.runner = CollectorRunner(
-            self.collectors, self.ingest.handle, self.repos.collector_status, self.clock
+            self.collectors,
+            self.ingest.handle,
+            self.repos.collector_status,
+            self.clock,
+            is_paused=self.monitoring.is_paused,
         )
 
     # --- composition ---
@@ -156,7 +163,13 @@ class HomeSenseApp:
             collectors.append(ArpScanCollector(s.arp_subnet, self.clock, s.arp_interval_s))
         if s.adguard_enabled and self.adguard is not None:
             collectors.append(
-                AdGuardDnsCollector(self.adguard, self.repos.settings, self.clock, s.adguard_interval_s)
+                AdGuardDnsCollector(
+                    self.adguard,
+                    self.repos.settings,
+                    self.clock,
+                    s.adguard_interval_s,
+                    not_before=self.monitoring.resumed_at,
+                )
             )
         return collectors
 
@@ -172,6 +185,7 @@ class HomeSenseApp:
         if self._initialized:
             return
         migrate_databases(self.db, self.auth_db)
+        self.monitoring.load()
         self.presence.restore()
         self.bus.subscribe(ObservationsBatch, self.presence.on_batch)
         self.bus.subscribe(AlertRaised, self.dispatcher.on_alert)
@@ -211,7 +225,7 @@ class HomeSenseApp:
         if collect:
             for collector in self.collectors:
                 await self.runner.run_once(collector)
-        await self.presence.tick()
+        await self._presence_tick()
 
     # --- periodic jobs ---
 
@@ -223,12 +237,20 @@ class HomeSenseApp:
         return await asyncio.shield(future)
 
     async def _presence_tick(self) -> None:
+        """Also applies the auto-resume of a timed monitoring pause; presence is frozen while paused."""
+        await self.monitoring.expire()
+        if self.monitoring.is_paused():
+            return
         await self.presence.tick()
 
     async def _rebuild_profiles(self) -> None:
+        if self.monitoring.is_paused():
+            return
         await self._in_thread(self.profiles.rebuild_all)
 
     async def _run_detectors(self) -> None:
+        if self.monitoring.is_paused():
+            return
         await run_detectors(self.detectors, self.detector_context(), self.alerts)
 
     async def _purge_old(self) -> None:

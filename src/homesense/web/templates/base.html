@@ -28,6 +28,7 @@
       <a href="{{ href }}"{% if page == key %} class="active" aria-current="page"{% endif %}>{{ label }}{% if key == 'alerts' %}<span class="badge" id="alert-badge"{% if not unacked %} hidden{% endif %}>{{ unacked }}</span>{% endif %}</a>
       {% endfor %}
     </nav>
+    {% include "partials/monitoring_switch.html" %}
     <form method="post" action="/logout" class="logout">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="btn btn-ghost" title="Zalogowano jako {{ user }}">Wyloguj</button>

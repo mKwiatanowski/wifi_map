@@ -15,6 +15,7 @@ def purge_old(repos: Repos, now: datetime, retention_days: int) -> dict[str, int
         "presence": repos.presence.delete_before(cutoff),
         "dns": repos.dns.delete_before(cutoff),
         "alerts": repos.alerts.delete_before(cutoff),
+        "monitoring_pauses": repos.monitoring.delete_before(cutoff),
     }
 
 

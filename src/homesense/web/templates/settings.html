@@ -3,6 +3,12 @@
 {% block content %}
 <div class="page-head"><h1>Ustawienia</h1><span class="muted small">Zalogowano jako {{ username }}</span></div>
 
+<section class="card" id="monitoring">
+  <h2>Monitoring</h2>
+  <p class="muted small">Wstrzymanie zatrzymuje odpytywanie routera, skanowanie ARP i pobieranie DNS z AdGuarda, wykrywanie anomalii i powiadomienia. Usługa nadal działa, więc monitoring wznowisz tutaj albo w pasku u góry. Stan obecności jest „zamrożony” — przerwa nie jest liczona jako wyjście domowników.</p>
+  {% include "partials/monitoring_switch.html" %}
+</section>
+
 <section class="card" x-data="alertRules">
   <h2>Powiadomienia</h2>
   <form class="stack" x-on:submit.prevent="save()">
@@ -73,7 +79,8 @@
       <tr>
         <td>{{ c.name }}</td>
         <td>
-          {% if c.paused_until %}<span class="tag">wstrzymany do {{ c.paused_until|when }}</span>
+          {% if monitoring.paused %}<span class="tag">wstrzymany (monitoring)</span>
+          {% elif c.paused_until %}<span class="tag">wstrzymany do {{ c.paused_until|when }}</span>
           {% elif st is none %}<span class="muted">brak danych</span>
           {% elif st.consecutive_failures %}<span class="dot dot-err"></span>błędy: {{ st.consecutive_failures }}
           {% else %}<span class="dot dot-on"></span>działa{% endif %}

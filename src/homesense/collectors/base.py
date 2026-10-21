@@ -37,6 +37,7 @@ class CollectorRunner:
         status: CollectorStatusRepo,
         clock: Clock,
         max_backoff_s: float = 600,
+        is_paused: Callable[[], bool] | None = None,
     ) -> None:
         self._collectors = list(collectors)
         self._sink = sink
@@ -45,9 +46,16 @@ class CollectorRunner:
         self._max_backoff_s = max_backoff_s
         self._failures: dict[str, int] = {c.name: 0 for c in self._collectors}
         self._paused: dict[str, datetime] = {}
+        # Global monitoring switch (monitoring.MonitoringControl); per-collector pauses are _paused.
+        self._monitoring_paused = is_paused or (lambda: False)
+
+    @property
+    def monitoring_paused(self) -> bool:
+        return self._monitoring_paused()
 
     async def run_once(self, collector: Collector) -> bool:
-        if self.paused_until(collector.name) is not None:
+        """Skipped (True, no query, no status change) while monitoring or this collector is paused."""
+        if self._monitoring_paused() or self.paused_until(collector.name) is not None:
             return True
         try:
             observations = await collector.collect()

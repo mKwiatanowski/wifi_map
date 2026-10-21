@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -25,10 +26,20 @@ class PresenceEngine:
     A person stays home until none of their presence devices has been seen for longer than
     `departure_timeout` (hysteresis against phones dropping off WiFi while asleep). The leave
     is then back-dated to the last sighting.
+
+    After a monitoring pause (`resumed_at` returns its end) nobody was observed for a while, so
+    departures are held until one departure timeout has passed since the resume: a person who is
+    still home is seen again within that time, one who left during the pause leaves afterwards.
     """
 
     def __init__(
-        self, repos: Repos, bus: EventBus, alerts: AlertService, clock: Clock, departure_timeout: timedelta
+        self,
+        repos: Repos,
+        bus: EventBus,
+        alerts: AlertService,
+        clock: Clock,
+        departure_timeout: timedelta,
+        resumed_at: Callable[[], datetime | None] | None = None,
     ) -> None:
         self._repos = repos
         self._bus = bus
@@ -38,6 +49,7 @@ class PresenceEngine:
         self._states: dict[int, PersonState] = {}
         self._restored = False
         self._lock = asyncio.Lock()
+        self._resumed_at = resumed_at or (lambda: None)
 
     def restore(self) -> None:
         """Rebuild state from storage: an open interval means home since its start."""
@@ -76,6 +88,8 @@ class PresenceEngine:
         state = self._states[person.id]
         latest = self._latest_presence_device(person.id)
         home_now = latest is not None and now - latest.last_seen <= self._timeout
+        if state.home and not home_now and self._holding_departures(now):
+            return None
 
         if home_now and not state.home:
             event = PresenceEvent(ts=latest.last_seen, person_id=person.id, kind="arrive", mac=latest.mac)
@@ -96,6 +110,10 @@ class PresenceEngine:
         await self._bus.publish(event)
         await self._alerts.raise_alert(self._alert_for(person, event))
         return event
+
+    def _holding_departures(self, now: datetime) -> bool:
+        resumed = self._resumed_at()
+        return resumed is not None and resumed <= now < resumed + self._timeout
 
     def _latest_presence_device(self, person_id: int) -> Device | None:
         devices = [d for d in self._repos.devices.for_person(person_id) if d.counts_for_presence]

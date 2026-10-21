@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from homesense.core.clock import Clock
@@ -22,6 +23,9 @@ class AdGuardDnsCollector:
     whole seconds: anything in the cursor's second is treated as already seen. This avoids
     re-ingesting the newest query of the previous run at the cost of possibly skipping a
     query logged later within that same second.
+
+    AdGuard keeps logging while monitoring is paused; queries older than `not_before()` (the end of
+    the last monitoring pause) are skipped, so the backlog of the pause is never ingested.
     """
 
     name = "adguard"
@@ -33,12 +37,14 @@ class AdGuardDnsCollector:
         clock: Clock,
         interval_s: float = 30,
         max_pages: int = 20,
+        not_before: Callable[[], datetime | None] | None = None,
     ) -> None:
         self.interval_s = interval_s
         self._client = client
         self._settings = settings_repo
         self._clock = clock
         self._max_pages = max_pages
+        self._not_before = not_before or (lambda: None)
 
     def _is_new(self, record: DnsQueryRecord, cursor: datetime | None, window_start: datetime) -> bool:
         if cursor is not None:
@@ -70,4 +76,5 @@ class AdGuardDnsCollector:
         new.sort(key=lambda r: r.ts)
         if new:
             self._settings.set(CURSOR_KEY, ts_to_db(new[-1].ts))
-        return new
+        resumed = self._not_before()
+        return new if resumed is None else [r for r in new if r.ts >= resumed]

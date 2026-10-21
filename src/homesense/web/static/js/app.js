@@ -70,12 +70,53 @@
     return `Błąd serwera (${xhr.status}).`;
   }
 
+  // --- monitoring on/off switch -----------------------------------------------------------------
+
+  function monitoringText(state) {
+    if (!state.paused) return "Monitoring: włączony";
+    if (!state.until) return "Monitoring: wstrzymany do odwołania";
+    const d = new Date(state.until);
+    if (Number.isNaN(d.getTime())) return "Monitoring: wstrzymany";
+    const today = new Date().toDateString() === d.toDateString();
+    const time = d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+    const day = d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
+    return `Monitoring: wstrzymany do ${today ? time : `${day} ${time}`}`;
+  }
+
+  function applyMonitoring(state) {
+    if (!state || typeof state.paused !== "boolean") return;
+    for (const box of document.querySelectorAll("[data-monitoring-box]")) {
+      box.classList.toggle("is-paused", state.paused);
+      const text = box.querySelector(".js-mon-text");
+      if (text) text.textContent = monitoringText(state);
+      const dot = box.querySelector(".js-mon-dot");
+      if (dot) dot.className = `dot ${state.paused ? "dot-warn" : "dot-on"} js-mon-dot`;
+      const pause = box.querySelector(".js-mon-pause");
+      if (pause) {
+        pause.hidden = state.paused;
+        pause.open = false;
+      }
+      const resume = box.querySelector(".js-mon-resume");
+      if (resume) resume.hidden = !state.paused;
+    }
+  }
+
   // Every mutating htmx request (POST/PUT/PATCH/DELETE, with or without the hs-json extension)
   // reports its outcome: redirect / reload on success, the API's error text otherwise.
   function onAfterRequest(evt) {
     const elt = evt.detail.elt;
     const verb = (evt.detail.requestConfig && evt.detail.requestConfig.verb) || "get";
     if (!elt || verb.toLowerCase() === "get") return;
+    if ("monitoring" in elt.dataset) {
+      if (evt.detail.successful) {
+        try {
+          applyMonitoring(JSON.parse(evt.detail.xhr.responseText));
+        } catch {
+          /* not JSON */
+        }
+      }
+      return;
+    }
     const box = statusBox(elt);
     if (evt.detail.successful) {
       if (elt.dataset.redirect) {
@@ -209,6 +250,7 @@
       prependFeed(event);
       if (event.type === "AlertRaised") bumpBadge();
       if (event.type === "PresenceEvent") document.body.dispatchEvent(new Event("hsrefresh"));
+      if (event.type === "MonitoringChanged") applyMonitoring(event.data);
     };
   }
 

@@ -22,6 +22,7 @@ from homesense.app import HomeSenseApp
 from homesense.core.clock import Clock
 from homesense.core.models import Device, Person, normalize_mac
 from homesense.core.timeutil import floor_hour, to_local
+from homesense.monitoring import PAUSE_HOURS
 from homesense.network import analysis
 from homesense.patterns.profiles import PERSON_HOME, typical_times
 from homesense.presence.engine import PersonState
@@ -141,6 +142,8 @@ def _render(request: Request, name: str, page: str | None = None, **context: Any
         "nav": NAV,
         "page": page,
         "unacked": core.repos.alerts.count_unacknowledged(),
+        "monitoring": core.monitoring.state(),
+        "pause_hours": PAUSE_HOURS,
     }
     response = request.app.state.templates.TemplateResponse(request, name, {**base, **context})
     response.headers["Cache-Control"] = "no-store"

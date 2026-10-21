@@ -31,17 +31,32 @@ ICON_SIZE = 64
 GREEN = (46, 160, 67)
 AMBER = (210, 153, 34)
 RED = (200, 50, 50)
+GREY = (128, 128, 128)
 _COLORS = {"ok": GREEN, "degraded": AMBER}
 
 LABEL_OPEN_PANEL = "Otwórz panel"
 LABEL_OPEN_BROWSER = "Otwórz w przeglądarce"
 LABEL_PAUSE_ROUTER = "Wstrzymaj router 15 min"
+LABEL_MONITORING = "Wstrzymaj / wznów monitoring"
+TITLE_PAUSED = "HomeSense — monitoring wstrzymany"
 LABEL_QUIT = "Zakończ"
 
 
 def health_color(status: str | None) -> tuple[int, int, int]:
     """ok → green, degraded → amber, down / unknown / unreachable → red."""
     return _COLORS.get(status or "", RED)
+
+
+def is_paused(payload: dict | None) -> bool:
+    monitoring = payload.get("monitoring") if payload else None
+    return isinstance(monitoring, dict) and monitoring.get("paused") is True
+
+
+def icon_color(payload: dict | None) -> tuple[int, int, int]:
+    """Grey while monitoring is paused, otherwise the health colour."""
+    if is_paused(payload):
+        return GREY
+    return health_color(payload.get("status") if payload else None)
 
 
 def make_icon(color: tuple[int, int, int]) -> Image:
@@ -86,6 +101,8 @@ def _people(n: int) -> str:
 def tray_title(payload: dict | None) -> str:
     if payload is None:
         return "HomeSense — brak połączenia"
+    if is_paused(payload):
+        return TITLE_PAUSED
     people = payload.get("people_home")
     if isinstance(people, int) and not isinstance(people, bool):
         return f"HomeSense — {people} {_people(people)} w domu"
@@ -121,7 +138,8 @@ class TrayController:
         return [
             (LABEL_OPEN_PANEL, self.open_panel),
             (LABEL_OPEN_BROWSER, self.open_in_browser),
-            # Pausing needs a logged-in, CSRF-protected API call; the settings page has the button.
+            # Pausing needs a logged-in, CSRF-protected API call; the settings page has the buttons.
+            (LABEL_MONITORING, self.open_monitoring),
             (LABEL_PAUSE_ROUTER, self.open_settings),
             (LABEL_QUIT, self.quit),
         ]
@@ -135,6 +153,9 @@ class TrayController:
     def open_settings(self) -> None:
         spawn_window(f"{self.base}/settings")
 
+    def open_monitoring(self) -> None:
+        spawn_window(f"{self.base}/settings#monitoring")
+
     def quit(self) -> None:
         self.stop_event.set()
         if self.icon is not None:
@@ -143,7 +164,7 @@ class TrayController:
     def apply_health(self, payload: dict | None) -> None:
         if self.icon is None:
             return
-        self.icon.icon = make_icon(health_color(payload.get("status") if payload else None))
+        self.icon.icon = make_icon(icon_color(payload))
         self.icon.title = tray_title(payload)
 
     def poll_forever(self, interval_s: float = POLL_INTERVAL_S) -> None:

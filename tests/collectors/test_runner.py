@@ -218,3 +218,18 @@ async def test_run_forever_survives_unexpected_loop_error(clock, repos):
     assert task.cancelled()
     assert arp.calls >= 1
     assert len(sink.batches) == arp.calls
+
+
+async def test_monitoring_pause_skips_every_collector_without_status_change(clock, repos):
+    paused = True
+    collector = FakeCollector("router")
+    collector.clock = clock
+    sink = RecordingSink()
+    runner = CollectorRunner([collector], sink, repos.collector_status, clock, is_paused=lambda: paused)
+    assert await runner.run_once(collector)
+    assert collector.calls == 0 and sink.batches == []
+    assert repos.collector_status.get("router") is None
+    assert runner.monitoring_paused and runner.health() == "ok"
+    paused = False
+    assert await runner.run_once(collector)
+    assert collector.calls == 1

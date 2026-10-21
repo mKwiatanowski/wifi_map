@@ -176,3 +176,30 @@ async def test_adguard_error_propagates_and_cursor_untouched(collector, repos):
     with pytest.raises(AdGuardError):
         await collector.collect()
     assert repos.settings.get(CURSOR_KEY) == "2026-10-19 06:00:05"
+
+
+@respx.mock
+async def test_queries_logged_during_a_monitoring_pause_are_skipped(adguard, repos, clock):
+    """AdGuard keeps logging while paused; only queries after the resume are ingested."""
+    repos.settings.set(CURSOR_KEY, "2026-10-19 05:00:00")  # before the pause
+    clock.set(utc(6, 1, 0))
+    collector = AdGuardDnsCollector(
+        adguard, repos.settings, clock, interval_s=30, not_before=lambda: utc(6, 0, 30)
+    )
+    respx.get(QUERYLOG).mock(
+        side_effect=Pages(
+            {
+                None: {
+                    "data": [
+                        item("2026-10-19T08:00:40+02:00", "after.example"),
+                        item("2026-10-19T07:30:00+02:00", "during-pause.example"),
+                        item("2026-10-19T06:59:00+02:00", "seen.example"),
+                    ],
+                    "oldest": "2026-10-19T06:59:00+02:00",
+                }
+            }
+        )
+    )
+    records = await collector.collect()
+    assert [r.domain for r in records] == ["after.example"]
+    assert repos.settings.get(CURSOR_KEY) == "2026-10-19 06:00:40"
