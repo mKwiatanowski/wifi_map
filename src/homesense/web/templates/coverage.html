@@ -5,6 +5,10 @@
 <div class="page-head">
   <h1>Zasięg Wi-Fi</h1>
 </div>
+<div class="tabs" role="tablist" aria-label="Widok">
+  <button type="button" class="active" role="tab" aria-selected="true" data-tab="survey">Mapa zasięgu</button>
+  <button type="button" role="tab" aria-selected="false" data-tab="signal">Sygnał w czasie</button>
+</div>
 
 <div data-panel="survey">
   <p class="notice notice-info small">Narysuj plan mieszkania, zaznacz router, a potem chodź z telefonem po domu: wybierz telefon z listy, stań w danym miejscu i dotknij tego miejsca na planie. HomeSense przez {{ default_window }} s zbiera sygnał (RSSI), który router raportuje dla tego urządzenia, i zapisuje medianę. Router podaje sygnał mniej więcej co minutę, więc nie ruszaj się do końca odliczania.</p>
@@ -72,6 +76,27 @@
       </table>
     </div>
     <p class="empty" id="points-empty">Brak pomiarów.</p>
+  </section>
+</div>
+<div data-panel="signal" hidden>
+  <p class="notice notice-info small">Średni sygnał (RSSI), który router raportował dla każdego urządzenia w danej godzinie doby, z ostatnich {{ signal_days }} dni (czas lokalny). Puste pole — brak danych o sygnale w tej godzinie. Urządzenia przewodowe nie mają sygnału, więc ich tu nie ma.</p>
+  <form class="card map-filters" id="signal-filters" aria-label="Filtry">
+    <fieldset class="map-kinds">
+      <legend>Typ urządzenia</legend>
+      {% for key, label in kinds.items() %}
+      <label class="check"><input type="checkbox" name="kind" value="{{ key }}" checked> <span class="kind-badge kind-{{ key }}" aria-hidden="true"></span>{{ label }}</label>
+      {% endfor %}
+    </fieldset>
+  </form>
+  <section class="card">
+    <div class="table-wrap">
+      <table class="table signal-grid" id="signal-grid">
+        <thead><tr id="signal-head"><th>Urządzenie</th>{% for h in range(24) %}<th class="sg-hour">{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody id="signal-rows"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="signal-empty" hidden>Brak danych o sygnale dla wybranych typów urządzeń.</p>
+    <p class="small muted" id="signal-status" role="status"></p>
   </section>
 </div>
 <script type="application/json" id="coverage-bands">{{ bands|tojson }}</script>

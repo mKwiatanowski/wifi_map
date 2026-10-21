@@ -427,7 +427,7 @@ def map_page(request: Request, core: Core) -> Response:
 
 @router.get("/coverage")
 def coverage_page(request: Request, core: Core) -> Response:
-    """Wi-Fi coverage survey; the data comes from /api/coverage (static/js/coverage.js)."""
+    """Wi-Fi coverage survey and signal over time (/api/coverage*, static/js/coverage.js)."""
     devices = sorted(core.repos.devices.list(), key=lambda d: d.display_name.lower())
     return _render(
         request,
@@ -437,6 +437,8 @@ def coverage_page(request: Request, core: Core) -> Response:
         bands=BAND_LABELS,
         windows=SURVEY_WINDOWS_S,
         default_window=SURVEY_DEFAULT_WINDOW_S,
+        kinds=RADAR_KIND_LABELS,
+        signal_days=routes_api.SIGNAL_DAYS,
     )
 
 

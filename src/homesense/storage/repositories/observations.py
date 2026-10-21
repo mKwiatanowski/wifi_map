@@ -110,6 +110,19 @@ class ObservationRepo(Repo):
                 out.setdefault(r.mac, []).append(_row(r))
         return out
 
+    def signal_hourly(self, since: datetime, until: datetime) -> list[tuple[datetime, str, float, int]]:
+        """(UTC hour, mac, average RSSI, samples) of observations with an RSSI, per device and hour."""
+        with self.db.connect() as c:
+            rows = c.execute(
+                text(
+                    "SELECT strftime('%Y-%m-%d %H:00:00', ts) AS hour, mac, AVG(signal) AS rssi, "
+                    "COUNT(*) AS n FROM device_observations "
+                    "WHERE ts >= :s AND ts < :u AND signal IS NOT NULL GROUP BY hour, mac ORDER BY mac, hour"
+                ),
+                {"s": ts_to_db(since), "u": ts_to_db(until)},
+            )
+            return [(ts_from_db(r.hour), r.mac, float(r.rssi), int(r.n)) for r in rows]
+
     def delete_before(self, ts: datetime) -> int:
         with self.db.begin() as c:
             return c.execute(

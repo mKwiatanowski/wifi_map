@@ -134,6 +134,77 @@
           "show": false
         }
       }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Sygnał Wi-Fi wg godziny doby",
+      "description": "Średni i najsłabszy RSSI zgłaszany przez router dla każdego urządzenia w danej godzinie doby (czas lokalny komputera). Im bliżej 0, tym lepiej: powyżej −60 dBm dobry, poniżej −75 dBm słaby.",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "homesense-sqlite"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "homesense-sqlite"
+          },
+          "refId": "A",
+          "queryType": "table",
+          "queryText": "SELECT COALESCE(d.label, d.hostname, o.mac) AS \"Urządzenie\",\n  CAST(strftime('%H', o.ts, 'localtime') AS INTEGER) AS \"Godzina\",\n  ROUND(AVG(o.signal), 1) AS \"Średni sygnał (dBm)\",\n  MIN(o.signal) AS \"Najsłabszy (dBm)\",\n  COUNT(*) AS \"Próbek\"\nFROM device_observations o\nLEFT JOIN devices d ON d.mac = o.mac\nWHERE o.signal IS NOT NULL AND o.ts >= datetime($__from / 1000, 'unixepoch') AND o.ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY o.mac, 2\nORDER BY 1, 2",
+          "rawQueryText": "SELECT COALESCE(d.label, d.hostname, o.mac) AS \"Urządzenie\",\n  CAST(strftime('%H', o.ts, 'localtime') AS INTEGER) AS \"Godzina\",\n  ROUND(AVG(o.signal), 1) AS \"Średni sygnał (dBm)\",\n  MIN(o.signal) AS \"Najsłabszy (dBm)\",\n  COUNT(*) AS \"Próbek\"\nFROM device_observations o\nLEFT JOIN devices d ON d.mac = o.mac\nWHERE o.signal IS NOT NULL AND o.ts >= datetime($__from / 1000, 'unixepoch') AND o.ts <= datetime($__to / 1000, 'unixepoch')\nGROUP BY o.mac, 2\nORDER BY 1, 2"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Średni sygnał (dBm)"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": -75
+                    },
+                    {
+                      "color": "green",
+                      "value": -60
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
     }
   ]
 }

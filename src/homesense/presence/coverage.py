@@ -14,6 +14,7 @@ from collections.abc import Iterable
 from datetime import datetime
 
 from homesense.core.models import CoveragePoint, DeviceObservation
+from homesense.core.timeutil import to_local
 from homesense.storage.repositories import Repos
 
 BAND_BY_CONNECTION = {"2g": "2.4", "5g": "5", "6g": "6"}
@@ -56,6 +57,21 @@ def live_point(repos: Repos, point: CoveragePoint) -> CoveragePoint:
         return point
     rssi, samples, band = summarize(window_samples(repos, point))
     return CoveragePoint(**{**point.__dict__, "rssi": rssi, "samples": samples, "band": band})
+
+
+def signal_by_hour(
+    rows: Iterable[tuple[datetime, str, float, int]], tz: str
+) -> dict[str, dict[int, tuple[float, int]]]:
+    """MAC -> local hour of day (0-23) -> (sample-weighted average RSSI, samples) from hourly rows."""
+    sums: dict[str, dict[int, list[float]]] = {}
+    for hour_ts, mac, rssi, n in rows:
+        cell = sums.setdefault(mac, {}).setdefault(to_local(hour_ts, tz).hour, [0.0, 0])
+        cell[0] += rssi * n
+        cell[1] += n
+    return {
+        mac: {h: (round(total / n, 1), int(n)) for h, (total, n) in hours.items() if n}
+        for mac, hours in sums.items()
+    }
 
 
 def active_targets(repos: Repos, now: datetime) -> dict[str, float]:

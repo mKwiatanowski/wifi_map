@@ -81,6 +81,9 @@ def seeded_db(db):
         "('2026-10-18 10:01:00', 'aa:aa:aa:aa:aa:01', '192.168.0.10', 'sim', 1, 10.0, 200.0), "
         "('2026-10-18 10:00:00', 'aa:aa:aa:aa:aa:02', '192.168.0.11', 'sim', 1, 3.0, 40.0), "
         "('2026-10-18 10:02:00', 'aa:aa:aa:aa:aa:03', '192.168.0.12', 'sim', 0, NULL, NULL)",
+        "INSERT INTO device_observations(ts, mac, ip, source, online, connection, signal) VALUES "
+        "('2026-10-18 10:03:00', 'aa:aa:aa:aa:aa:01', '192.168.0.10', 'sim', 1, '5g', -55), "
+        "('2026-10-18 10:04:00', 'aa:aa:aa:aa:aa:01', '192.168.0.10', 'sim', 1, '5g', -65)",
         "INSERT INTO presence_events(ts, person_id, kind, mac) VALUES "
         "('2026-10-17 07:00:00', 1, 'leave', 'aa:aa:aa:aa:aa:01'), "
         "('2026-10-17 16:00:00', 1, 'arrive', 'aa:aa:aa:aa:aa:01'), "
@@ -185,6 +188,14 @@ def test_domain_panels_hide_stats_only_devices(seeded_db):
         assert rows, panel["title"]
         assert PRIVATE_DOMAIN not in repr(rows), panel["title"]
     assert domain_panels == 2  # top domains + new domains
+
+
+def test_signal_by_hour_panel_averages_rssi(seeded_db):
+    (target,) = [t for _n, p, t in _targets() if p["title"] == "Sygnał Wi-Fi wg godziny doby"]
+    columns, rows = _query(seeded_db, target)
+    row = dict(zip(columns, rows[0], strict=True))
+    assert row["Urządzenie"] == "Telefon Anny" and row["Średni sygnał (dBm)"] == -60.0
+    assert row["Najsłabszy (dBm)"] == -65 and row["Próbek"] == 2
 
 
 def test_presence_timeline_marks_open_interval_as_home(seeded_db):

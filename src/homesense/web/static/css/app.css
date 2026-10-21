@@ -303,3 +303,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .coverage-canvas.is-drawing { touch-action: none; }
 .coverage-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
 .coverage-legend canvas { width: 160px; height: 12px; border-radius: 3px; }
+.signal-grid { min-width: 720px; table-layout: fixed; }
+.signal-grid th, .signal-grid td { padding: 0.2rem; border-bottom: 2px solid var(--surface); }
+.signal-grid .sg-name { width: 9rem; text-transform: none; letter-spacing: 0; font-size: 0.8rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signal-grid .sg-hour { text-align: center; font-size: 0.7rem; padding: 0.2rem 0; }
+.signal-grid .sg-cell { text-align: center; font-size: 0.7rem; color: #fff; border-radius: 3px; font-variant-numeric: tabular-nums; }
+.signal-grid .sg-cell.is-empty { background: repeating-linear-gradient(45deg, var(--surface-2), var(--surface-2) 2px, transparent 2px, transparent 4px); }

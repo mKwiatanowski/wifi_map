@@ -405,6 +405,51 @@
     await load();
   }
 
+  // --- signal over time (device x hour of day) ------------------------------------------------
+
+  async function loadSignal() {
+    const kinds = [...document.querySelectorAll('#signal-filters input[name="kind"]:checked')].map((i) => i.value);
+    const rows = $("signal-rows");
+    if (!kinds.length) {
+      rows.replaceChildren();
+      $("signal-empty").hidden = false;
+      return;
+    }
+    let data;
+    try {
+      data = await api("GET", `/api/coverage/signal-hours?kinds=${encodeURIComponent(kinds.join(","))}`);
+    } catch (err) {
+      say("signal-status", err.message, true);
+      return;
+    }
+    say("signal-status", "");
+    rows.replaceChildren();
+    $("signal-empty").hidden = data.devices.length > 0;
+    for (const dev of data.devices) {
+      const tr = document.createElement("tr");
+      const name = document.createElement("th");
+      name.scope = "row";
+      name.className = "sg-name";
+      name.textContent = dev.name;
+      name.title = dev.mac;
+      tr.append(name);
+      dev.cells.forEach((cell, hour) => {
+        const td = document.createElement("td");
+        td.className = "sg-cell";
+        if (cell) {
+          td.style.backgroundColor = color(cell.rssi, 0.85);
+          td.textContent = String(Math.round(cell.rssi));
+          td.title = `${dev.name}, ${hour}:00–${hour}:59: średnio ${cell.rssi} dBm (${cell.samples} próbek)`;
+        } else {
+          td.classList.add("is-empty");
+          td.title = `${dev.name}, ${hour}:00–${hour}:59: brak danych`;
+        }
+        tr.append(td);
+      });
+      rows.append(tr);
+    }
+  }
+
   // --- start -----------------------------------------------------------------------------------
 
   async function load() {
@@ -469,6 +514,10 @@
     });
     initTabs();
     renderLegend();
+    document.addEventListener("coverage:tab", (evt) => {
+      if (evt.detail === "signal") loadSignal();
+    });
+    $("signal-filters")?.addEventListener("change", loadSignal);
     load();
   });
 })();

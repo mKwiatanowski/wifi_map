@@ -226,6 +226,13 @@ Zakładka **Zasięg Wi-Fi** pozwala zmierzyć, gdzie w mieszkaniu sygnał jest d
    punktami (IDW). Można filtrować po paśmie i ukryć punkty. Pojedyncze punkty usuwa się z tabeli,
    wszystkie — przyciskiem „Wyczyść pomiary” (plan zostaje).
 
+**Sygnał w czasie** (druga karta tej strony) liczy się sam, bez chodzenia po domu: tabela
+urządzenie × godzina doby pokazuje średni sygnał (RSSI) z ostatnich 7 dni (czas lokalny), w tych
+samych kolorach co mapa. Puste pole oznacza brak danych w tej godzinie; urządzenia przewodowe się nie
+pojawiają. Można filtrować po typie urządzenia, tak jak na Mapie. Dane pochodzą z obserwacji routera,
+więc podlegają zwykłej retencji (30 dni). To samo zestawienie jest w Grafanie: **Analityka →
+Urządzenia → „Sygnał Wi-Fi wg godziny doby”**.
+
 Pomiar nie działa, gdy monitoring jest wstrzymany. W trybie symulacji (dev) wybrane urządzenie
 symulowanego domu dostaje sygnał wyliczony modelem tłumienia z odległości między routerem
 a dotkniętym punktem (z niewielkim szumem), więc mapę można przetestować bez prawdziwej sieci.

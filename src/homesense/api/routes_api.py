@@ -665,6 +665,33 @@ def clear_coverage_points(core: Core) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+SIGNAL_DAYS = 7
+
+
+@router.get("/coverage/signal-hours")
+def coverage_signal_hours(
+    core: Core, kinds: str | None = None, days: Annotated[int, Query(ge=1, le=30)] = SIGNAL_DAYS
+) -> dict:
+    """Average RSSI per device and local hour of day over the last `days` (devices with data only)."""
+    wanted = _radar_kinds(kinds)
+    now = core.clock.now()
+    rows = core.repos.observations.signal_hourly(now - timedelta(days=days), now + timedelta(seconds=1))
+    by_hour = coverage.signal_by_hour(rows, core.settings.timezone)
+    devices = []
+    for d in core.repos.devices.list():
+        hours = by_hour.get(d.mac)
+        kind, _guessed = radar.device_kind(d)
+        if not hours or (wanted is not None and kind not in wanted):
+            continue
+        cells = [
+            {"hour": h, "rssi": hours[h][0], "samples": hours[h][1]} if h in hours else None
+            for h in range(24)
+        ]
+        devices.append({"mac": d.mac, "name": d.display_name, "kind": kind, "cells": cells})
+    devices.sort(key=lambda e: (e["name"].lower(), e["mac"]))
+    return {"days": days, "timezone": core.settings.timezone, "devices": devices}
+
+
 # --- network ---
 
 
