@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -97,6 +98,10 @@ PHONE_PERIODS_S = ((900.0, 2400.0), (240.0, 600.0))
 LAPTOP_RSSI = (-62.0, -48.0)
 LAPTOP_NOISE_DB = 2
 FIXED_RSSI = (-78.0, -60.0)
+# Coverage survey: RSSI from log-distance path loss between the router and the tapped point.
+SURVEY_NOISE_DB = 2.0
+SURVEY_MIN_DISTANCE_M = 0.5
+SURVEY_RSSI_RANGE = (-95, -30)
 
 
 @dataclass
@@ -184,8 +189,12 @@ class SimulatedHousehold:
         seed: int = 42,
         personas: list[SimPersona] | None = None,
         shared: list[SimDevice] | None = None,
+        p0_dbm: float = -40.0,
+        path_loss_n: float = 3.0,
     ) -> None:
         default_personas, default_shared = default_household()
+        self.p0_dbm = p0_dbm
+        self.path_loss_n = path_loss_n
         self.personas = default_personas if personas is None else personas
         self.shared = default_shared if shared is None else shared
         self._clock = clock
@@ -251,10 +260,36 @@ class SimulatedHousehold:
             return round(base) + noise.randint(-LAPTOP_NOISE_DB // 2, LAPTOP_NOISE_DB // 2)
         return round(rng.uniform(*FIXED_RSSI))
 
-    def device_observations(self) -> list[DeviceObservation]:
+    def survey_signal(self, device: SimDevice, distance_m: float, at: datetime) -> int:
+        """RSSI of a device held `distance_m` from the router (coverage survey), with a little noise."""
+        d = max(distance_m, SURVEY_MIN_DISTANCE_M)
+        noise = self._rng("survey-noise", device.mac, int(at.timestamp())).uniform(
+            -SURVEY_NOISE_DB, SURVEY_NOISE_DB
+        )
+        value = self.p0_dbm - 10 * self.path_loss_n * math.log10(d) + noise
+        low, high = SURVEY_RSSI_RANGE
+        return round(min(high, max(low, value)))
+
+    def all_devices(self) -> list[SimDevice]:
+        return (
+            [d for p in self.personas for d in p.devices]
+            + list(self.shared)
+            + [g.device for g in self._guests]
+        )
+
+    def device_observations(self, survey: dict[str, float] | None = None) -> list[DeviceObservation]:
+        """Observations of the online devices. `survey` maps MAC -> distance from the router of a
+        running coverage measurement: that (wireless) device is reported online with a path-loss RSSI."""
         now = require_aware(self._clock.now()).astimezone(UTC)
+        survey = survey or {}
+        devices = self._online_devices(now)
+        online = {d.mac for d in devices}
+        devices += [d for d in self.all_devices() if d.mac in survey and d.mac not in online]
         observations = []
-        for device in self._online_devices(now):
+        for device in devices:
+            signal = self.signal(device, now)
+            if device.mac in survey and signal is not None:
+                signal = self.survey_signal(device, survey[device.mac], now)
             rng = self._rng("traffic", device.mac, now.isoformat())
             observations.append(
                 DeviceObservation(
@@ -265,7 +300,7 @@ class SimulatedHousehold:
                     ip=device.ip,
                     hostname=device.hostname,
                     connection=device.link,
-                    signal=self.signal(device, now),
+                    signal=signal,
                     down_kbps=round(rng.uniform(0, MAX_DOWN_KBPS), 1),
                 )
             )
@@ -315,11 +350,18 @@ class SimulatedHousehold:
 class SimulatedCollector:
     name = "simulated"
 
-    def __init__(self, household: SimulatedHousehold, interval_s: float = 30) -> None:
+    def __init__(
+        self,
+        household: SimulatedHousehold,
+        interval_s: float = 30,
+        survey: Callable[[], dict[str, float]] | None = None,
+    ) -> None:
         self.interval_s = interval_s
         self._household = household
+        # Running coverage measurements (MAC -> distance from the router), see presence/coverage.py.
+        self._survey = survey or dict
 
     async def collect(self) -> list[Observation]:
-        observations: list[Observation] = list(self._household.device_observations())
+        observations: list[Observation] = list(self._household.device_observations(self._survey()))
         observations.extend(self._household.dns_queries(self.interval_s))
         return observations

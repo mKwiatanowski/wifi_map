@@ -40,6 +40,7 @@ NAV = [
     ("persons", "/persons", "Osoby"),
     ("devices", "/devices", "Urządzenia"),
     ("map", "/map", "Mapa"),
+    ("coverage", "/coverage", "Zasięg Wi-Fi"),
     ("network", "/network", "Sieć"),
     ("analytics", "/analytics", "Analityka"),
     ("alerts", "/alerts", "Alerty"),
@@ -66,6 +67,9 @@ RADAR_KIND_LABELS = {
     "unknown": "Nieznane",
 }
 RADAR_RINGS_M = [2, 5, 10, 20]
+BAND_LABELS = {"2.4": "2,4 GHz", "5": "5 GHz", "6": "6 GHz", "unknown": "nieznane"}
+SURVEY_WINDOWS_S = [30, 60, 120, 180]
+SURVEY_DEFAULT_WINDOW_S = 60
 DEVICE_FILTER_LABELS = {
     "all": "Wszystkie",
     "online": "Online",
@@ -418,6 +422,21 @@ def map_page(request: Request, core: Core) -> Response:
         kinds=RADAR_KIND_LABELS,
         persons=core.repos.persons.list(),
         rings=RADAR_RINGS_M,
+    )
+
+
+@router.get("/coverage")
+def coverage_page(request: Request, core: Core) -> Response:
+    """Wi-Fi coverage survey; the data comes from /api/coverage (static/js/coverage.js)."""
+    devices = sorted(core.repos.devices.list(), key=lambda d: d.display_name.lower())
+    return _render(
+        request,
+        "coverage.html",
+        "coverage",
+        devices=devices,
+        bands=BAND_LABELS,
+        windows=SURVEY_WINDOWS_S,
+        default_window=SURVEY_DEFAULT_WINDOW_S,
     )
 
 

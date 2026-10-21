@@ -35,6 +35,7 @@ from homesense.notifications.telegram import TelegramNotifier
 from homesense.notifications.windows_toast import WindowsToastNotifier
 from homesense.patterns.detectors import Detector, DetectorContext, default_detectors, run_detectors
 from homesense.patterns.profiles import ProfileBuilder
+from homesense.presence import coverage
 from homesense.presence.engine import PresenceEngine
 from homesense.scheduler import Periodic
 from homesense.storage import retention
@@ -95,7 +96,13 @@ class HomeSenseApp:
 
         simulated = settings.mode == "simulated"
         self.household: SimulatedHousehold | None = (
-            SimulatedHousehold(self.clock, tz=settings.timezone, seed=settings.sim_seed)
+            SimulatedHousehold(
+                self.clock,
+                tz=settings.timezone,
+                seed=settings.sim_seed,
+                p0_dbm=settings.radar_p0_dbm,
+                path_loss_n=settings.radar_path_loss_n,
+            )
             if simulated
             else None
         )
@@ -151,7 +158,11 @@ class HomeSenseApp:
         s = self.settings
         if s.mode == "simulated":
             assert self.household is not None
-            return [SimulatedCollector(self.household)]
+            return [
+                SimulatedCollector(
+                    self.household, survey=lambda: coverage.active_targets(self.repos, self.clock.now())
+                )
+            ]
         collectors: list[Collector] = []
         if s.router_enabled:
             collectors.append(

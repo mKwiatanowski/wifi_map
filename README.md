@@ -29,7 +29,9 @@ log zapytań AdGuard Home.
 - Każda osoba może mieć tryb **„Tylko statystyki”** (`privacy_mode = stats_only`): wtedy dla jej
   urządzeń nazwy domen w ogóle nie trafiają do bazy, zapisywane są tylko liczby zapytań.
 - Dane są przechowywane tylko lokalnie na komputerze docelowym (`C:\HomeSense\data`) i automatycznie usuwane po
-  **30 dniach** (`HOMESENSE_RETENTION_DAYS`). Nic nie jest wysyłane do chmury poza powiadomieniami,
+  **30 dniach** (`HOMESENSE_RETENTION_DAYS`). Wyjątek: plan mieszkania i punkty pomiaru zasięgu
+  Wi-Fi (strona **Zasięg Wi-Fi**) to dane wprowadzone przez Was — nie są usuwane automatycznie, tylko
+  wtedy, gdy je usuniecie w panelu. Nic nie jest wysyłane do chmury poza powiadomieniami,
   które sami włączycie (Telegram/ntfy).
 - Strona **Prywatność** w panelu pokazuje, co jest zbierane, i pozwala zmienić tryb dla każdej osoby.
 - Panel wymaga zalogowania. Konta są w osobnej bazie `auth.db` (w podkatalogu `data\auth\`, razem
@@ -205,6 +207,28 @@ jest wtedy szara z podpisem „HomeSense — monitoring wstrzymany”.
 Zakładka **Mapa** pokazuje widok z góry: router w środku, wokół niego urządzenia w szacowanej odległości (pierścienie ~2 / 5 / 10 / 20 m, skala pierwiastkowa). Kolor kropki to kolor osoby (szary — nieprzypisane), litera to typ urządzenia (telefon, komputer, tablet, TV, IoT, nieznane). Można filtrować po typie i osobie, pokazać tylko urządzenia online i ślad z ostatnich 30 minut. Widok odświeża się co 10 s.
 
 **Ograniczenie:** jeden router mierzy tylko siłę sygnału (RSSI) każdego urządzenia, nie kierunek. Odległość liczona jest modelem tłumienia `d = 10^((P0 − RSSI) / (10·n))` (domyślnie `HOMESENSE_RADAR_P0_DBM=-40`, `HOMESENSE_RADAR_PATH_LOSS_N=3.0`) z wygładzonego RSSI, więc ściany i trzymanie telefonu w dłoni zmieniają ją o kilka metrów. Kierunek na mapie jest umowny (stały dla urządzenia, wyliczany z adresu MAC). Urządzenia przewodowe stoją przy routerze, a te bez danych o sygnale są wypisane pod mapą.
+
+## Zasięg Wi-Fi (mapa pokrycia)
+
+Zakładka **Zasięg Wi-Fi** pozwala zmierzyć, gdzie w mieszkaniu sygnał jest dobry, a gdzie słaby:
+
+1. **Plan** — podaj szerokość i długość mieszkania w metrach i kliknij „Zapisz wymiary”. Wybierz
+   „rysuje pokój”, wpisz nazwę i przeciągnij prostokąt na planie (siatka co 1 m, przyciąganie co
+   25 cm). Wybierz „ustawia router” i dotknij miejsca, gdzie stoi router. Pokoje usuwa się z listy pod
+   planem. Plan zapisuje się od razu.
+2. **Pomiar** — najlepiej z telefonu (PWA): wybierz swój telefon z listy urządzeń, zaznacz „mierzy
+   sygnał”, stań w danym miejscu i dotknij go na planie. Przez wybrany czas (domyślnie 60 s)
+   HomeSense zbiera RSSI, które router raportuje dla tego urządzenia; panel pokazuje odliczanie
+   i wynik — medianę próbek. Punkt bez żadnej próbki jest oznaczony „brak próbek” i pomijany. Router
+   podaje sygnał mniej więcej co minutę, więc nie ruszaj się do końca pomiaru. Pasmo (2,4 / 5 / 6 GHz)
+   jest zapisywane, jeśli router je podaje.
+3. **Mapa** — kolorowa mapa (zielony ≈ −30 dBm, czerwony ≈ −85 dBm) jest interpolowana między
+   punktami (IDW). Można filtrować po paśmie i ukryć punkty. Pojedyncze punkty usuwa się z tabeli,
+   wszystkie — przyciskiem „Wyczyść pomiary” (plan zostaje).
+
+Pomiar nie działa, gdy monitoring jest wstrzymany. W trybie symulacji (dev) wybrane urządzenie
+symulowanego domu dostaje sygnał wyliczony modelem tłumienia z odległości między routerem
+a dotkniętym punktem (z niewielkim szumem), więc mapę można przetestować bez prawdziwej sieci.
 
 ## Powiadomienia
 

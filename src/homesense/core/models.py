@@ -147,3 +147,36 @@ class MonitoringChanged:
     paused: bool
     until: datetime | None
     ts: datetime
+
+
+@dataclass(frozen=True)
+class CoverageRoom:
+    name: str
+    x: float
+    y: float
+    w: float
+    h: float
+
+
+@dataclass(frozen=True)
+class CoveragePlan:
+    """Floor plan of the coverage survey; metres, origin top-left, y grows downwards."""
+
+    width_m: float
+    height_m: float
+    router: tuple[float, float] | None
+    rooms: tuple[CoverageRoom, ...] = ()
+
+
+@dataclass(frozen=True)
+class CoveragePoint:
+    id: int
+    mac: str
+    x: float
+    y: float
+    started_at: datetime
+    ends_at: datetime
+    done: bool
+    rssi: float | None  # median dBm; None = no sample (after done: invalid point)
+    samples: int
+    band: str  # 2.4|5|6|unknown

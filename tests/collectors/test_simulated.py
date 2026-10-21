@@ -302,3 +302,22 @@ def test_wired_shared_devices_have_no_signal():
 def test_signal_is_deterministic_per_seed():
     assert _signals_over_time(minutes=5) == _signals_over_time(minutes=5)
     assert _signals_over_time(minutes=5) != _signals_over_time(seed=7, minutes=5)
+
+
+def test_survey_signal_follows_log_distance_and_forces_device_online(clock):
+    from homesense.collectors.simulated import SimulatedHousehold
+
+    household = SimulatedHousehold(clock, p0_dbm=-40.0, path_loss_n=3.0)
+    phone = household.personas[0].devices[0]
+    near = household.survey_signal(phone, 1.0, clock.now())
+    far = household.survey_signal(phone, 10.0, clock.now())
+    assert -42 <= near <= -38 and -72 <= far <= -68
+    assert household.survey_signal(phone, 1000.0, clock.now()) == -95  # clamped
+
+    # 08:00 local on a Monday: Anna is out, but the phone being measured is reported anyway.
+    macs = {o.mac for o in household.device_observations()}
+    assert phone.mac not in macs
+    obs = {o.mac: o for o in household.device_observations({phone.mac: 10.0})}
+    assert -72 <= obs[phone.mac].signal <= -68
+    wired = household.shared[-1]
+    assert obs[wired.mac].signal is None  # wired devices are never given a survey RSSI

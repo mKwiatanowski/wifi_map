@@ -202,6 +202,7 @@ Panel (Jinja2 + HTMX, po polsku, ciemny/jasny motyw, responsywny):
 - **Teraz** — karty osób (w domu/poza, od kiedy), liczba urządzeń online, strumień zdarzeń (SSE), status kolektorów.
 - **Osoby** — CRUD osób, tryb prywatności, profil 7×24 (heatmapa Chart.js), typowe godziny, oś czasu dnia, „dziś vs norma”.
 - **Urządzenia** — lista z filtrem (online/nowe/nieprzypisane/obce), przypisanie do osoby, `counts_for_presence`, `trusted`, rodzaj, etykieta; historia online; ruch.
+- **Zasięg Wi-Fi** (`/coverage`, `static/js/coverage.js`) — plan mieszkania (wymiary w m, prostokątne pokoje, router), pomiary: wybrane urządzenie + dotknięty punkt → mediana RSSI z obserwacji routera w oknie 30–180 s (pasmo, jeśli znane), mapa ciepła IDW na canvasie (−30 → −85 dBm), filtr pasma. Tabele `coverage_plan`, `coverage_rooms`, `coverage_points` (migracja 0004) — dane użytkownika, bez retencji. API: `GET /api/coverage`, `PUT /api/coverage/plan`, `POST/GET/DELETE /api/coverage/points[/{id}]`.
 - **Sieć** — top domen, zablokowane, nowe domeny, wykres zapytań/h, akcje: zablokuj domenę / urządzenie, odblokuj.
 - **Analityka** — osadzone dashboardy Grafany (iframe `/grafana/d/...?kiosk`).
 - **Alerty** — lista, potwierdzanie, filtr.

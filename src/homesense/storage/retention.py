@@ -7,8 +7,10 @@ from homesense.storage.repositories import Repos
 
 
 def purge_old(repos: Repos, now: datetime, retention_days: int) -> dict[str, int]:
-    """Delete observations, presence events/closed intervals, DNS data and alerts older than
-    `retention_days`. Returns deleted row counts per area."""
+    """Delete observations, presence events/closed intervals, DNS data, alerts and ended monitoring
+    pauses older than `retention_days`. Returns deleted row counts per area.
+
+    The coverage survey (plan, rooms, points) is user-created configuration and is never purged."""
     cutoff = now - timedelta(days=retention_days)
     return {
         "observations": repos.observations.delete_before(cutoff),

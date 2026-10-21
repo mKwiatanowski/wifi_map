@@ -289,3 +289,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 }
 .card .monitoring { font-size: 0.95rem; }
 .card .mon-options { left: 0; right: auto; }
+
+/* --- Wi-Fi coverage (/coverage) --- */
+.coverage-modes { border: 0; margin: 0.75rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: flex-end; }
+.coverage-modes legend { font-size: 0.85rem; color: var(--muted); padding: 0; margin-bottom: 0.25rem; }
+.room-list { list-style: none; margin: 0.75rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
+.room-list li { display: inline-flex; align-items: center; gap: 0.25rem; }
+.survey-status { margin: 0.75rem 0 0; font-weight: 600; }
+.survey-status.is-error { color: var(--err); }
+.coverage-card { padding: 0.5rem; }
+.coverage-wrap { width: 100%; }
+.coverage-canvas { display: block; width: 100%; border-radius: 8px; cursor: crosshair; touch-action: manipulation; }
+.coverage-canvas.is-drawing { touch-action: none; }
+.coverage-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+.coverage-legend canvas { width: 160px; height: 12px; border-radius: 3px; }

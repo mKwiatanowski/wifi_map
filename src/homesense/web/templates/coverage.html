@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Zasięg Wi-Fi – HomeSense{% endblock %}
+{% block scripts %}<script src="/static/js/coverage.js" defer></script>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Zasięg Wi-Fi</h1>
+</div>
+
+<div data-panel="survey">
+  <p class="notice notice-info small">Narysuj plan mieszkania, zaznacz router, a potem chodź z telefonem po domu: wybierz telefon z listy, stań w danym miejscu i dotknij tego miejsca na planie. HomeSense przez {{ default_window }} s zbiera sygnał (RSSI), który router raportuje dla tego urządzenia, i zapisuje medianę. Router podaje sygnał mniej więcej co minutę, więc nie ruszaj się do końca odliczania.</p>
+
+  <section class="card">
+    <h2>Plan</h2>
+    <form class="form-row" id="plan-form">
+      <label>Szerokość (m)<input type="number" name="width_m" min="1" max="200" step="0.5" value="12" required></label>
+      <label>Długość (m)<input type="number" name="height_m" min="1" max="200" step="0.5" value="9" required></label>
+      <button type="submit" class="btn">Zapisz wymiary</button>
+    </form>
+    <fieldset class="coverage-modes" id="coverage-modes">
+      <legend>Dotknięcie planu</legend>
+      <label class="check"><input type="radio" name="mode" value="measure" checked> mierzy sygnał</label>
+      <label class="check"><input type="radio" name="mode" value="room"> rysuje pokój (przeciągnij)</label>
+      <label class="check"><input type="radio" name="mode" value="router"> ustawia router</label>
+      <label>Nazwa pokoju<input type="text" id="room-name" maxlength="40" placeholder="np. Salon"></label>
+    </fieldset>
+    <ul class="room-list" id="room-list" aria-label="Pokoje"></ul>
+    <p class="form-status" id="plan-status" role="status"></p>
+  </section>
+
+  <section class="card">
+    <h2>Pomiar</h2>
+    <div class="form-row">
+      <label>Urządzenie
+        <select id="survey-device">
+          <option value="">— wybierz —</option>
+          {% for d in devices %}<option value="{{ d.mac }}">{{ d.display_name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Czas pomiaru
+        <select id="survey-window">
+          {% for s in windows %}<option value="{{ s }}"{% if s == default_window %} selected{% endif %}>{{ s }} s</option>{% endfor %}
+        </select>
+      </label>
+      <label>Pasmo
+        <select id="band-filter">
+          <option value="all">Wszystkie</option>
+          {% for key, label in bands.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="show-points" checked> pokaż punkty</label>
+    </div>
+    <p class="survey-status" id="survey-status" role="status" aria-live="polite">Wybierz urządzenie i dotknij planu tam, gdzie stoisz.</p>
+  </section>
+
+  <section class="card coverage-card">
+    <div class="coverage-wrap" id="coverage-wrap">
+      <canvas id="coverage-canvas" class="coverage-canvas" aria-label="Plan mieszkania z mapą zasięgu Wi-Fi" role="img"></canvas>
+    </div>
+    <p class="empty" id="coverage-empty" hidden>Brak planu — podaj wymiary i kliknij „Zapisz wymiary”.</p>
+    <div class="coverage-legend" aria-label="Legenda">
+      <span class="small muted">-30 dBm</span><canvas id="coverage-legend" width="200" height="12" aria-hidden="true"></canvas><span class="small muted">-85 dBm</span>
+      <span class="small muted">zielony — silny sygnał, czerwony — słaby; między punktami wartości są interpolowane (IDW)</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="page-head"><h2>Punkty pomiaru</h2><button type="button" class="btn btn-small btn-danger" id="clear-points">Wyczyść pomiary</button></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Czas</th><th>Urządzenie</th><th class="num">RSSI</th><th class="num hide-sm">Próbek</th><th>Pasmo</th><th></th></tr></thead>
+        <tbody id="point-rows"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="points-empty">Brak pomiarów.</p>
+  </section>
+</div>
+<script type="application/json" id="coverage-bands">{{ bands|tojson }}</script>
+{% endblock %}

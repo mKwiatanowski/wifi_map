@@ -3,11 +3,12 @@
 // Privacy: only static assets (/static/*) are cached. Pages are network-only with an offline
 // notice as fallback, so personal data is never stored in the cache or shown offline to someone
 // else. /api/*, the SSE stream and /grafana/* are not intercepted at all.
-const CACHE = "homesense-static-v4";
+const CACHE = "homesense-static-v5";
 const PRECACHE = [
   "/static/css/app.css",
   "/static/js/app.js",
   "/static/js/map.js",
+  "/static/js/coverage.js",
   "/static/vendor/htmx.min.js",
   "/static/vendor/alpine.min.js",
   "/static/vendor/chart.umd.min.js",

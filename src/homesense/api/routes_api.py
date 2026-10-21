@@ -12,18 +12,34 @@ from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 from sqlalchemy.exc import IntegrityError
 
 from homesense.api.deps import csrf_protect, csrf_token, current_user, get_core, require_user
 from homesense.app import HomeSenseApp
-from homesense.core.models import Alert, Device, Person, normalize_mac
+from homesense.core.models import (
+    Alert,
+    CoveragePlan,
+    CoveragePoint,
+    CoverageRoom,
+    Device,
+    Person,
+    normalize_mac,
+)
 from homesense.core.timeutil import floor_hour, to_local
 from homesense.monitoring import PAUSE_HOURS, MonitoringState
 from homesense.network import analysis
 from homesense.network.adguard import AdGuardClient, AdGuardError
 from homesense.patterns.profiles import PERSON_HOME, typical_times
-from homesense.presence import radar
+from homesense.presence import coverage, radar
 from homesense.storage.repositories.dns import UNKNOWN_MAC
 
 log = logging.getLogger(__name__)
@@ -157,6 +173,54 @@ class MonitoringPauseIn(BaseModel):
         if value is not None and value not in PAUSE_HOURS:
             raise ValueError(f"hours must be one of {PAUSE_HOURS} or null")
         return value
+
+
+Metres = Annotated[float, Field(ge=0, le=200)]
+MAX_PLAN_M = 200
+MAX_ROOMS = 50
+
+
+class PointXY(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    x: Metres
+    y: Metres
+
+
+class RoomIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+    x: Metres
+    y: Metres
+    w: Annotated[float, Field(gt=0, le=MAX_PLAN_M)]
+    h: Annotated[float, Field(gt=0, le=MAX_PLAN_M)]
+
+
+class PlanIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    width_m: Annotated[float, Field(ge=1, le=MAX_PLAN_M)]
+    height_m: Annotated[float, Field(ge=1, le=MAX_PLAN_M)]
+    router: PointXY | None = None
+    rooms: Annotated[list[RoomIn], Field(max_length=MAX_ROOMS)] = []
+
+    @model_validator(mode="after")
+    def _inside_plan(self) -> "PlanIn":
+        eps = 1e-6
+        if self.router and (self.router.x > self.width_m + eps or self.router.y > self.height_m + eps):
+            raise ValueError("router outside the plan")
+        for room in self.rooms:
+            if room.x + room.w > self.width_m + eps or room.y + room.h > self.height_m + eps:
+                raise ValueError(f"room {room.name!r} outside the plan")
+        return self
+
+
+class SurveyPointIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    mac: str
+    x: Metres
+    y: Metres
+    window_s: Annotated[int, Field(ge=coverage.MIN_WINDOW_S, le=coverage.MAX_WINDOW_S)] = 60
+
+    _normalize = field_validator("mac")(normalize_mac)
 
 
 # --- serialization ---
@@ -494,6 +558,111 @@ def device_map(
         )
     result.sort(key=lambda e: (e["name"].lower(), e["mac"]))
     return result
+
+
+# --- Wi-Fi coverage survey ---
+
+
+def _plan_json(plan: CoveragePlan | None) -> dict | None:
+    if plan is None:
+        return None
+    return {
+        "width_m": plan.width_m,
+        "height_m": plan.height_m,
+        "router": None if plan.router is None else {"x": plan.router[0], "y": plan.router[1]},
+        "rooms": [{"name": r.name, "x": r.x, "y": r.y, "w": r.w, "h": r.h} for r in plan.rooms],
+    }
+
+
+def _point_json(core: HomeSenseApp, p: CoveragePoint, names: dict[str, str]) -> dict:
+    now = core.clock.now()
+    if not p.done:
+        p = coverage.live_point(core.repos, p)
+        status_ = "measuring"
+    else:
+        status_ = "ok" if p.rssi is not None else "no_samples"
+    return {
+        "id": p.id,
+        "mac": p.mac,
+        "device": names.get(p.mac, p.mac),
+        "x": p.x,
+        "y": p.y,
+        "started_at": _iso(p.started_at),
+        "ends_at": _iso(p.ends_at),
+        "remaining_s": max(0, round((p.ends_at - now).total_seconds())) if not p.done else 0,
+        "status": status_,
+        "rssi": p.rssi,
+        "samples": p.samples,
+        "band": p.band,
+    }
+
+
+def _device_names_by_mac(core: HomeSenseApp) -> dict[str, str]:
+    return {d.mac: d.display_name for d in core.repos.devices.list()}
+
+
+@router.get("/coverage")
+def get_coverage(core: Core) -> dict:
+    coverage.finalize_due(core.repos, core.clock.now())
+    names = _device_names_by_mac(core)
+    return {
+        "plan": _plan_json(core.repos.coverage.get_plan()),
+        "points": [_point_json(core, p, names) for p in core.repos.coverage.points()],
+    }
+
+
+@router.put("/coverage/plan")
+def put_coverage_plan(body: PlanIn, core: Core) -> dict:
+    plan = CoveragePlan(
+        width_m=body.width_m,
+        height_m=body.height_m,
+        router=None if body.router is None else (body.router.x, body.router.y),
+        rooms=tuple(CoverageRoom(r.name, r.x, r.y, r.w, r.h) for r in body.rooms),
+    )
+    core.repos.coverage.save_plan(plan)
+    return _plan_json(core.repos.coverage.get_plan())
+
+
+@router.post("/coverage/points", status_code=status.HTTP_201_CREATED)
+def add_coverage_point(body: SurveyPointIn, core: Core) -> dict:
+    plan = core.repos.coverage.get_plan()
+    if plan is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Najpierw zapisz plan mieszkania")
+    if body.x > plan.width_m or body.y > plan.height_m:
+        raise HTTPException(UNPROCESSABLE, "Punkt leży poza planem")
+    _get_device(core, body.mac)
+    if core.monitoring.is_paused():
+        raise HTTPException(status.HTTP_409_CONFLICT, "Monitoring jest wstrzymany — wznów go, aby mierzyć")
+    now = core.clock.now()
+    coverage.finalize_due(core.repos, now)
+    if core.repos.coverage.measuring():
+        raise HTTPException(status.HTTP_409_CONFLICT, "Trwa inny pomiar — poczekaj na jego koniec")
+    point = core.repos.coverage.add_point(
+        body.mac, body.x, body.y, now, now + timedelta(seconds=body.window_s)
+    )
+    return _point_json(core, point, _device_names_by_mac(core))
+
+
+@router.get("/coverage/points/{point_id}")
+def get_coverage_point(point_id: int, core: Core) -> dict:
+    coverage.finalize_due(core.repos, core.clock.now())
+    point = core.repos.coverage.get_point(point_id)
+    if point is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nie ma takiego punktu pomiaru")
+    return _point_json(core, point, _device_names_by_mac(core))
+
+
+@router.delete("/coverage/points/{point_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_coverage_point(point_id: int, core: Core) -> Response:
+    if not core.repos.coverage.delete_point(point_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nie ma takiego punktu pomiaru")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/coverage/points", status_code=status.HTTP_204_NO_CONTENT)
+def clear_coverage_points(core: Core) -> Response:
+    core.repos.coverage.clear_points()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # --- network ---
